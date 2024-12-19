@@ -12,7 +12,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
-from storeapp.models import Product, Category, Review, Cart, Cartitems, Profile, Order
+from ecommerce.models import Product, Category, Review, Cart, Cartitems, Profile, Order
 from .filters import ProductFilter
 from .serializers import ProductSerializer, CategorySerializer, ReviewSerializer, CartSerializer, CartItemSerializer, \
     AddCartItemSerializer, UpdateCartItemSerializer, ProfileSerializer, OrderSerializer, CreateOrderSerializer, UpdateOrderSerializer
@@ -20,17 +20,18 @@ from rest_framework.parsers import MultiPartParser, FormParser
 import requests
 
 
-def initiate_payment(amount, email, order_id):
+def initiate_payment(amount, email, pending_id, user):
     url = "https://api.flutterwave.com/v3/payments"
     headers = {
         "Authorization": f"Bearer {settings.FLW_SEC_KEY}"
     }
-
+    first_name = user.first_name
+    last_name = user.last_name
     data = {
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        "redirect_url": "http:/127.0.0.1:8000/api/orders/confirm_payment/?o_id=" + order_id,
+        "redirect_url": "http:/127.0.0.1:8000/api/pending/confirm_payment/?p_id=" + pending_id,
         "meta": {
             "consumer_id": 23,
             "consumer_mac": "92a3-912ba-1192a"
@@ -38,11 +39,12 @@ def initiate_payment(amount, email, order_id):
         "customer": {
             "email": email,
             "phonenumber": "080****4528",
-            "name": "Yemi Desola"
+            "name": f"{last_name} {first_name}"
         },
         "customizations": {
-            "title": "Shopy Naija",
-            "logo": "https://i5.walmartimages.com/asr/204dad21-0828-4e1e-8b82-b0c546ca3565_2.61e1b358993207fe8d6c97bb9fc2687e.png"
+            "title": "Success Air",
+            "logo": "https://jetinternational.com/wp-content/uploads/2016/11/iStock-177708665-5.jpg"
+
         }
     }
 
@@ -52,7 +54,6 @@ def initiate_payment(amount, email, order_id):
         return Response(response_data)
 
     except requests.exceptions.RequestException as err:
-        print("the payment didn't go through")
         return Response({"error": str(err)}, status=500)
 
 
