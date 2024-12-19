@@ -30,6 +30,11 @@ DEBUG = os.getenv("DEBUG")
 ALLOWED_HOSTS = ["*"]
 
 # Application definition
+SITE_ID = 1
+AUTHENTICATION_BACKENDS = {
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+}
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,10 +46,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'drf_yasg',
+    'allauth',
+    'allauth.account',
     'customuser',
     'api',
     'ecommerce',
-
 ]
 
 MIDDLEWARE = [
@@ -56,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'base.urls'
@@ -147,6 +154,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'customuser.User'
+FLW_SEC_KEY = os.getenv("FLW_SEC_KEY")
 
 REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
