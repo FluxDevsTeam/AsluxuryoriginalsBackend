@@ -4,25 +4,17 @@ import uuid
 from django.conf import settings
 
 
-# Create your models here.
-
-
 class Category(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     title = models.CharField(max_length=200)
-    category_id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, unique=True)
     slug = models.SlugField(unique=True, blank=True, null=True)
-    featured_product = models.OneToOneField('Product', on_delete=models.CASCADE, blank=True, null=True,
-                                            related_name='featured_product')
-    icon = models.CharField(max_length=100, default=None, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug if it doesn't exist
         if not self.slug:
-            base_slug = slugify(self.name)
+            base_slug = slugify(self.title)
             slug = base_slug
             counter = 1
-            while Product.objects.filter(slug=slug).exists():
+            while Category.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
@@ -46,7 +38,6 @@ class Product(models.Model):
     flash_sales = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug if it doesn't exist
         if not self.slug:
             base_slug = slugify(self.name)
             slug = base_slug
@@ -68,37 +59,40 @@ class ProductImages(models.Model):
     slug = models.SlugField(unique=True, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug if it doesn't exist
         if not self.slug:
-            base_slug = slugify(self.name)
+            base_slug = slugify(f"{self.product.name}-other-image")
             slug = base_slug
             counter = 1
-            while Product.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
-        super().save(*args, **kwargs)
-
-
-class Cart(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    created = models.DateTimeField(auto_now_add=True)
-    slug = models.SlugField(unique=True, blank=True, null=True)
-
-    def save(self, *args, **kwargs):
-        # Generate a unique slug if it doesn't exist
-        if not self.slug:
-            base_slug = slugify(self.name)
-            slug = base_slug
-            counter = 1
-            while Product.objects.filter(slug=slug).exists():
+            while ProductImages.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return str(self.id)
+        return f"{self.product.name} extra image"
+
+
+
+class Cart(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="carts")
+    created = models.DateTimeField(auto_now_add=True)
+    slug = models.SlugField(unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(f"{self.user.username}-cart")
+            slug = base_slug
+            counter = self.user.carts.count() + 1
+            while Cart.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Cart {self.id} ({self.slug})"
 
 
 class Cartitems(models.Model):
@@ -109,44 +103,44 @@ class Cartitems(models.Model):
     slug = models.SlugField(unique=True, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug if it doesn't exist
         if not self.slug:
-            base_slug = slugify(self.name)
+            base_slug = slugify(f"{self.cart.slug}-{self.product.name}")
             slug = base_slug
             counter = 1
-            while Product.objects.filter(slug=slug).exists():
+            while Cartitems.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Cartitem #{self.product.name} ({self.slug})"
 
 
 class Order(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     placed_at = models.DateTimeField(auto_now_add=True)
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders")
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     slug = models.SlugField(unique=True, blank=True, null=True)
-    def __str__(self):
-        return f"Order #{self.id} - Total: ${self.total_price}"
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug if it doesn't exist
+        items = self.items.all()
+        self.total_price = sum(item.quantity * item.price for item in items)
+
         if not self.slug:
-            base_slug = slugify(self.name)
+            base_slug = slugify(f"{self.owner.username}-order")
             slug = base_slug
-            counter = 1
-            while Product.objects.filter(slug=slug).exists():
+            counter = self.owner.orders.count() + 1
+            while Order.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
+
         super().save(*args, **kwargs)
 
-    def update_total_price(self):
-        # Recalculate based on OrderItems
-        items = self.items.all()
-        self.total_price = sum(item.quantity * item.price for item in items)
-        self.save()
+    def __str__(self):
+        return f"Order #{self.id} ({self.slug}) - Total: ${self.total_price:.2f}"
 
 
 class OrderItem(models.Model):
@@ -154,28 +148,26 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveSmallIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # Store the price at the time of order creation
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     slug = models.SlugField(unique=True, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug if it doesn't exist
+        if not self.pk:
+            self.price = self.product.price
+
         if not self.slug:
-            base_slug = slugify(self.name)
+            base_slug = slugify(f"{self.order.id}-{self.product.name}")
             slug = base_slug
             counter = 1
-            while Product.objects.filter(slug=slug).exists():
+            while OrderItem.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
-        super().save(*args, **kwargs)
 
-    def save(self, *args, **kwargs):
-        # Automatically set the product price on first save
-        if not self.pk:  # This ensures it's the first save (i.e., when creating the object)
-            self.price = self.product.price
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name} @ NGN{self.price} (Order)"
+
 
 
