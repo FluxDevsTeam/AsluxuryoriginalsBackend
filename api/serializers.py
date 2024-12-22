@@ -1,21 +1,18 @@
-from importlib.resources import read_binary
-from itertools import product
-from django.db import transaction
 from rest_framework import serializers
-from storeapp.models import *
+from ecommerce.models import *
 from django.db import transaction
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['category_id', 'title', 'slug']
+        fields = ['id', 'title', 'slug']
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImages
-        fields = ['id', 'product', 'image']
+        fields = ['id', 'product', 'image', 'slug']
 
 
 class ProductSerializer(serializers.ModelSerializer):
