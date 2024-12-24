@@ -1,31 +1,24 @@
 from django.urls import path, include
-from . import views
 from rest_framework.routers import DefaultRouter
-from rest_framework_nested import routers
+from rest_framework_nested.routers import NestedDefaultRouter
+from .views import ApiProducts, ApiCart, ApiCartItem, ApiColour, ApiCategory, ApiSize, ApiOrder
 
-router = routers.DefaultRouter()
-router.register('products', views.ApiProducts, basename='product')
-router.register('category', views.APICategory, basename='category')
-router.register('cart', views.ApiCart, basename='cart')
-router.register('profile', views.ApiProfile, basename='profile')
-router.register('orders', views.ApiOrder, basename='orders')
+# Default router for general API views
+router = DefaultRouter()
 
-product_router = routers.NestedDefaultRouter(router, 'products', lookup='product')
-product_router.register('reviews', views.ApiProductsReviews, basename='product-reviews')
-cart_router = routers.NestedDefaultRouter(router, 'cart', lookup='cart')
-cart_router.register('items', views.ApiCartItem, basename='cart-items')
+# Register main resources like Products, Cart, Categories, etc.
+router.register('products', ApiProducts, basename='product')
+router.register('categories', ApiCategory, basename='category')
+router.register('colours', ApiColour, basename='colour')
+router.register('sizes', ApiSize, basename='size')
+router.register('orders', ApiOrder, basename='order')
+router.register('carts', ApiCart, basename='cart')  # Register 'carts' first
+
+# Nested router for Cart and CartItems (now 'carts' is registered above)
+cart_router = NestedDefaultRouter(router, 'carts', lookup='cart')
+cart_router.register('items', ApiCartItem, basename='cart-items')
+
 urlpatterns = [
-    # path("products/", views.api_products),
-    # path("products/<str:pk>/", views.api_product),
-    # path("category/", views.api_categories),
-    # path("category/<str:pk>/", views.api_category),
-
-    path("", include(router.urls)),
-    path("", include(product_router.urls)),
-    path("", include(cart_router.urls)),
-    # path("", include(cart_router.urls))
-    # path("products/", views.ApiProducts.as_view()),
-    # path("products/<str:pk>", views.ApiProduct.as_view()),
-    # path("categories", views.APICategories.as_view()),
-    # path("categories/<str:pk>", views.APICategory.as_view())
+    path('', include(router.urls)),  # Main API urls
+    path('', include(cart_router.urls)),  # Nested urls for Cart and CartItems
 ]
