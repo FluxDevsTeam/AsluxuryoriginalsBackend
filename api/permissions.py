@@ -7,6 +7,14 @@ class IsAdminOrReadOnly(permissions.IsAdminUser):
         return request.method == 'GET' or admin_permission
 
 
+class IsOwner(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.owner == request.user
+
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated
+
+
 class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in ['GET', 'HEAD', 'OPTIONS']:
@@ -15,34 +23,3 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return True
 
         return obj.owner == request.user
-
-
-class IsCEO(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name='CEO').exists()
-
-
-class IsStoreKeeper(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name='Store Keeper').exists()
-
-
-class IsStoreKeeperReadonly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name='Store Keeper').exists() and request.method in permissions.SAFE_METHODS
-
-
-class IsProjectManager(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name='Project Manager').exists()
-
-
-class IsArtisan(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name='Artisans').exists()
-
-
-class IsArtisanReadOnly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        # Allow read-only access for artisans
-        return request.user.groups.filter(name='Artisans').exists() and request.method in permissions.SAFE_METHODS
