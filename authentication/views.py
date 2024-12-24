@@ -8,7 +8,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from rest_framework.viewsets import ViewSet
 
-from . import models
+from customuser import models
 from .serializers import UserSignupSerializer, LoginSerializer, EmailVerificationSerializer, ForgotPasswordSerializer, \
     CheckOTPSerializer, CheckSignupOTPSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
@@ -23,21 +23,9 @@ from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .security import create_token, decrypt_token
-from celery import shared_task
 import os
 from dotenv import load_dotenv
-
 load_dotenv()
-
-
-@shared_task
-def send_login_email(email):
-    subject = "Login"
-    message = "Your login was successful."
-    from_email = os.getenv("EMAIL")
-    recipient_list = [email]
-
-    send_mail(subject, message, from_email, recipient_list, fail_silently=False)
 
 
 class UserSignupViewSet(viewsets.ModelViewSet):
@@ -51,11 +39,10 @@ class UserSignupViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         email = data['email']
-        if not models.User.objects.filter(username=email).exists():
+        if not models.User.objects.filter(email=email).exists():
             user = models.User.objects.create(
                 first_name=data['first_name'],
                 last_name=data['last_name'],
-                username=email,
                 email=email,
                 password=make_password(data['password'])
             )
@@ -148,7 +135,7 @@ class UserLoginViewSet(viewsets.ModelViewSet):
             return Response({'message': 'User Does Not Exist'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not user.is_verified:
-            return Response({'message': 'Please verify your email first'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'please verify your email first'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not user.check_password(password):
             return Response({'message': 'Invalid Password'}, status=status.HTTP_400_BAD_REQUEST)
@@ -157,9 +144,12 @@ class UserLoginViewSet(viewsets.ModelViewSet):
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
-        # Enqueue the email sending task
-        send_login_email.delay(email)
+        subject = "login"
+        message = "your login was successful."
+        from_email = os.getenv("EMAIL")
+        recipient_list = [data.get('email')]
 
+        send_mail(subject, message, from_email, recipient_list, fail_silently=False)
         return Response({
             'access_token': access_token,
             'refresh_token': str(refresh),
