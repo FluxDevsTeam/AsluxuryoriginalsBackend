@@ -46,8 +46,10 @@ class User(AbstractUser):
     """
     Custom user model where email is the unique identifier for authentication.
     """
-    username = None  # Remove username field
+    username = None
     email = models.EmailField(unique=True)
+    is_verified = models.BooleanField(default=False)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)  # New field
 
     USERNAME_FIELD = 'email'  # Use email as the unique identifier
     REQUIRED_FIELDS = []  # No additional required fields
