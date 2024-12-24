@@ -31,10 +31,7 @@ ALLOWED_HOSTS = ["*"]
 
 # Application definition
 SITE_ID = 1
-AUTHENTICATION_BACKENDS = {
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-}
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -43,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
     'django_filters',
     'autoslug',
@@ -55,6 +53,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -90,24 +89,24 @@ WSGI_APPLICATION = 'base.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': os.getenv("NAME"),
-            'USER': os.getenv("USER"),
-            'PASSWORD': os.getenv("DB_PASSWORD"),
-            'HOST': os.getenv("HOST"),
-            'PORT': os.getenv("PORT"),
-
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+#             'NAME': os.getenv("NAME"),
+#             'USER': os.getenv("USER"),
+#             'PASSWORD': os.getenv("DB_PASSWORD"),
+#             'HOST': os.getenv("HOST"),
+#             'PORT': os.getenv("PORT"),
+#
+#     }
+# }
 
 
 # Password validation
@@ -158,11 +157,14 @@ AUTH_USER_MODEL = 'customuser.User'
 FLW_SEC_KEY = os.getenv("FLW_SEC_KEY")
 
 REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'customuser.authentication.EmailAuthentication',  # Custom authentication using email
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT authentication
+    ],
 }
+
 
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
@@ -189,3 +191,9 @@ EMAIL_PORT = 465
 EMAIL_HOST_USER = os.getenv("EMAIL")
 EMAIL_HOST_PASSWORD = os.getenv("PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL")
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+ACCOUNT_AUTHENTICATE_EMAIL = True
+ACCOUNT_EMAIL_REQUIRED = True
+ADMIN_LOGIN_REDIRECT_URL = '/'
