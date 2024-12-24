@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from customuser.models import User
 
 
 # class UserSignupSerializer(serializers.ModelSerializer):
@@ -19,8 +19,7 @@ class UserSignupSerializer(serializers.ModelSerializer):
     # tokens = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name',
-                  'username', 'email', 'password', 'tokens']
+        fields = ['id', 'first_name', 'last_name', 'email', 'password', 'phone_number']
         read_only_fields = ['id', ]
 
     extra_kwargs = {
@@ -28,6 +27,7 @@ class UserSignupSerializer(serializers.ModelSerializer):
         'last_name': {'required': True, 'allow_blank': False},
         'email': {'required': True, 'allow_blank': False},
         'password': {'required': True, 'allow_blank': False},
+        'phone_number': {'required': True, 'allow_blank': False},
     }
 
 
