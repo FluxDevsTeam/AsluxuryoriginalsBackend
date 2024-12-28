@@ -190,11 +190,11 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = SimpleProductSerializer
+    product = ProductSerializer()
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity', 'slug']
+        fields = ['id', 'product', 'quantity', 'slug', 'owner']
         read_only_fields = ['id']
 
 
