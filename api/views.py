@@ -26,12 +26,11 @@ from rest_framework.response import Response
 from django.conf import settings
 
 
-def initiate_payment(request, amount, email, cart_id, user):
+def initiate_payment(amount, email, cart_id, user):
     url = "https://api.flutterwave.com/v3/payments"
     headers = {
         "Authorization": f"Bearer {settings.FLW_SEC_KEY}"
     }
-
     first_name = user.first_name
     last_name = user.last_name
     user_id = user.id
@@ -41,10 +40,10 @@ def initiate_payment(request, amount, email, cart_id, user):
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        "redirect_url": f"http://127.0.0.1:8000/api",  # Change this in production
+        "redirect_url": "http:/127.0.0.1:8000/api/carts/confirm_payment/?c_id=" + cart_id,
         "meta": {
             "consumer_id": user_id,
-            "consumer_mac": "92a3-912ba-1192a"  # Optional, for fraud prevention
+            "consumer_mac": "92a3-912ba-1192a"
         },
         "customer": {
             "email": email,
@@ -59,19 +58,11 @@ def initiate_payment(request, amount, email, cart_id, user):
 
     try:
         response = requests.post(url, headers=headers, json=data)
+        response_data = response.json()
+        return Response(response_data)
 
-        if response.status_code == 200:
-            response_data = response.json()  # The JSON response from Flutterwave
-            return Response(response_data)  # Returning the response data as JSON
-
-        # In case of error from Flutterwave
-        error_data = {"error": "Payment initiation failed", "details": response.json()}
-        return Response(error_data, status=response.status_code)
-
-    except requests.RequestException as e:
-        # Handle any request errors
-        error_data = {"error": str(e)}
-        return Response(error_data, status=500)
+    except requests.exceptions.RequestException as err:
+        return Response({"error": str(err)}, status=500)
 
 
 class ApiProducts(viewsets.ModelViewSet):
@@ -103,6 +94,10 @@ class ApiCart(viewsets.ModelViewSet):
     def pay(self, request, pk=None):
         cart = self.get_object()
         cart_items = CartItems.objects.filter(cart=cart)
+        amount = cart.get_total_price()
+        email = request.user.email
+        user = request.user
+        cart_id = str(cart.id)
 
         # Validate inventory
         for cart_item in cart_items:
@@ -116,18 +111,8 @@ class ApiCart(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        amount = cart.get_total_price()
-        email = request.user.email
-        user = request.user
-        cart_id = str(cart.id)
-
         # Call initiate_payment and handle the response
-        payment_response = initiate_payment(request, amount, email, cart_id, user)
-
-        if "error" in payment_response:
-            return Response(payment_response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        return Response(payment_response, status=status.HTTP_200_OK)
+        return initiate_payment(amount, email, cart_id, user)
 
     @action(detail=False, methods=["POST"])
     def confirm_payment(self, request):
@@ -152,9 +137,11 @@ class ApiCart(viewsets.ModelViewSet):
 
                 order_items.append(
                     OrderItem(
+                        owner=request.user,
                         order=order,
                         product=product,
-                        quantity=cart_item.quantity
+                        quantity=cart_item.quantity,
+                        price=cart_item.product.price
                     )
                 )
             OrderItem.objects.bulk_create(order_items)
