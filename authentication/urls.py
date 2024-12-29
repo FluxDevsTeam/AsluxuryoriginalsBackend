@@ -10,5 +10,5 @@ urlpatterns = [
     path('check_signup_otp/', CheckSignupOTPViewSet.as_view({'post': 'create'}), name='check-signup-otp'),
     path('api/logout/', LogoutViewSet.as_view({'post': 'logout'}), name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('accounts/', include('allauth.urls')),
+    # path('accounts/', include('allauth.urls')),
 ]
