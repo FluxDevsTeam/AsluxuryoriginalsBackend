@@ -13,7 +13,7 @@ from .serializers import UserSignupSerializer, LoginSerializer, EmailVerificatio
     CheckOTPSerializer, CheckSignupOTPSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 import jwt
-from .utils import Util
+from .utils import Util, generate_otp
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from django.conf import settings
@@ -32,45 +32,53 @@ class UserSignupViewSet(viewsets.ModelViewSet):
     serializer_class = UserSignupSerializer
 
     def create(self, request, *args, **kwargs):
-        if request.method != 'POST':
-            return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
         data = request.data
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
 
         email = data['email']
-        if not models.User.objects.filter(email=email).exists():
-            user = models.User.objects.create(
-                first_name=data['first_name'],
-                last_name=data['last_name'],
-                email=email,
-                password=make_password(data['password'])
-            )
 
-            user = get_object_or_404(models.User, email=email)
-            otp = str(random.randint(100000, 999999))
+        # Check if the user already exists
+        existing_user = models.User.objects.filter(email=email).first()
+        if existing_user:
+            if not existing_user.is_verified:
+                return Response({'message': 'User exists but is not verified. Please verify your email.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'User Already Exists'}, status=status.HTTP_400_BAD_REQUEST)
 
-            payload = {
-                'user_id': user.id,
-                'email': user.email,
-                'otp': otp,
-                'exp': datetime.datetime.now() + datetime.timedelta(minutes=5)
-            }
-            token = create_token(payload)
+        # Create a new user
+        user = models.User.objects.create(
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            email=email,
+            password=make_password(data['password'])
+        )
 
+        # Generate OTP
+        otp = generate_otp()
+
+        # Generate token
+        token = create_token({
+            'user_id': user.id,
+            'email': user.email,
+            'otp': otp,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=5),
+        })
+
+        # Send OTP via email
+        try:
             send_mail(
-                'OTP for signup',
+                'OTP for Signup',
                 f'Your OTP is {otp}',
                 settings.EMAIL_HOST_USER,
                 [user.email],
             )
+        except Exception as e:
+            return Response({'message': 'Failed to send OTP email', 'error': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            return Response({
-                'token': token
-            }, status=status.HTTP_200_OK)
-
-        else:
-            return Response({'message': 'User Already Exists'}, status=status.HTTP_400_BAD_REQUEST)
+        # Respond with token
+        return Response({'token': token}, status=status.HTTP_201_CREATED)
 
 
 class CheckSignupOTPViewSet(viewsets.ModelViewSet):
@@ -130,7 +138,7 @@ class UserLoginViewSet(viewsets.ModelViewSet):
         password = data.get('password')
 
         try:
-            user = models.User.objects.get(username=email)
+            user = models.User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({'message': 'User Does Not Exist'}, status=status.HTTP_400_BAD_REQUEST)
 
