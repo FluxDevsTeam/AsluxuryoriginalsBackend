@@ -160,8 +160,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'customuser.authentication.EmailAuthentication',  # Custom authentication using email
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT authentication
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
 }
 
