@@ -19,7 +19,7 @@ class UserSignupSerializer(serializers.ModelSerializer):
     # tokens = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'password', 'phone_number']
+        fields = ['first_name', 'last_name', 'email', 'password', 'phone_number']
         read_only_fields = ['id', ]
 
     extra_kwargs = {
@@ -52,9 +52,6 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'first_name', 'last_name', 'email', 'username')
-
-
-from rest_framework import serializers
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
