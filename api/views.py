@@ -1,4 +1,3 @@
-
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 import uuid
@@ -12,11 +11,11 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from .permissions import IsAdminOrReadOnly, IsOwner, IsOwnerOrAdmin
-from ecommerce.models import Product, Category, Cart, Order, Size, Colour, CartItems, OrderItem
+from ecommerce.models import Product, Category, Cart, Order, Size, CartItems, OrderItem, SubCategory
 from .filters import ProductFilter
 from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, \
     AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, SimpleProductSerializer, \
-    SizeSerializer, ColourSerializer
+    SizeSerializer, SubCategorySerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 import requests
 
@@ -72,11 +71,9 @@ class ApiProducts(viewsets.ModelViewSet):
     search_fields = ['name', 'description', 'color']
     ordering_fields = ['price']
     pagination_class = PageNumberPagination
+    lookup_field = 'slug'
 
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return SimpleProductSerializer
-        return ProductSerializer
+    serializer_class = ProductSerializer
 
     def get_queryset(self):
         return Product.objects.filter(
@@ -85,10 +82,10 @@ class ApiProducts(viewsets.ModelViewSet):
 
 
 class ApiCart(viewsets.ModelViewSet):
-
     queryset = Cart.objects.all()
     serializer_class = CartSerializer
     permission_classes = [IsOwnerOrAdmin, IsAuthenticated]
+    lookup_field = 'slug'
 
     @action(detail=True, methods=['POST'])
     def pay(self, request, pk=None):
@@ -165,6 +162,7 @@ class ApiCart(viewsets.ModelViewSet):
 class ApiCartItem(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
     permission_classes = [IsOwnerOrAdmin, IsAuthenticated]
+    lookup_field = 'slug'
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -183,21 +181,22 @@ class ApiCartItem(viewsets.ModelViewSet):
         }
 
 
-class ApiColour(viewsets.ModelViewSet):
-    permission_classes = [IsAdminOrReadOnly, ]
-    serializer_class = ColourSerializer
-    queryset = Colour.objects.all()
-    filter_backends = [DjangoFilterBackend, SearchFilter]
-    search_fields = ['name']
-    pagination_class = PageNumberPagination
-
-
 class ApiCategory(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly, ]
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    search_fields = ['name']
+    search_fields = ['title']
+    lookup_field = 'slug'
+
+
+class ApiSubCategory(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrReadOnly, ]
+    serializer_class = SubCategorySerializer
+    queryset = SubCategory.objects.all()
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['title']
+    lookup_field = 'slug'
 
 
 class ApiSize(viewsets.ModelViewSet):
@@ -206,11 +205,13 @@ class ApiSize(viewsets.ModelViewSet):
     queryset = Size.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['size']
+    lookup_field = 'slug'
 
 
 class ApiOrder(viewsets.ModelViewSet):
     http_method_names = ["get", "patch", "delete", "options", "head"]
     serializer_class = OrderSerializer
+    lookup_field = 'slug'
 
     def get_permissions(self):
         if self.request.method in ["PATCH", "DELETE"]:
