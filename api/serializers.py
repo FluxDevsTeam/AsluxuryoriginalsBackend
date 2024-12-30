@@ -3,50 +3,59 @@ from ecommerce.models import *
 from django.db import transaction
 
 
+class SubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubCategory
+        fields = ['category', 'title', 'slug']
+        extra_kwargs = {
+            'category': {'write_only': True},
+        }
+
+
 class CategorySerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Category
-        fields = ['id', 'title', 'slug']
-        read_only_fields = ['id']
-
-
-class ColourSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Colour
-        fields = ['id', 'name', 'slug']
-        read_only_fields = ['id']
+        fields = ['title', 'slug']
 
 
 class SizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Size
-        fields = ['id', 'size', 'slug']
-        read_only_fields = ['id']
+        fields = ['size']
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImages
-        fields = ['id', 'product', 'image', 'slug']
-        read_only_fields = ['id']
+        fields = ['product', 'image']
+        extra_kwargs = {
+            'product': {'write_only': True},
+        }
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    extra_images = ProductImageSerializer(many=True, read_only=True)
-    category_view = CategorySerializer(read_only=True)
-    size_view = SizeSerializer(many=True, read_only=True)
-    colour_view = ColourSerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=False)
+    subcategory = SubCategorySerializer(read_only=False, required=False)
+    size = SizeSerializer(many=True, read_only=False)
     uploaded_images = serializers.ListField(
-        child=serializers.ImageField(max_length=1000000, allow_empty_file=True, use_url=False),
+        child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
         write_only=True,
-        required=False  # Make the field optional
+        required=True
     )
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'image', 'colour', 'size', 'price', 'slug', 'inventory','size_view','colour_view', 'top_deal', 'extra_images', 'category', 'category_view', 'uploaded_images']
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'slug', 'inventory', 'top_deal', 'images', 'category', 'subcategory', 'uploaded_images']
         read_only_fields = ['id']
-        write_only_fields = ['category', 'color', 'size']
+
+    def to_representation(self, instance):
+        # Override the to_representation method to return size as a list of strings
+        representation = super().to_representation(instance)
+        representation['size'] = [size['size'] for size in representation['size']]
+        representation['images'] = [name['image'] for name in representation['images']]
+        return representation
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop('uploaded_images', [])
