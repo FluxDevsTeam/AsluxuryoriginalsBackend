@@ -7,18 +7,12 @@ from rest_framework.response import Response
 from django.contrib.auth.hashers import make_password
 from customuser.models import User
 from rest_framework.viewsets import ViewSet
-
-from . import models
 from .serializers import UserSignupSerializer, LoginSerializer, EmailVerificationSerializer, ForgotPasswordSerializer, \
     CheckOTPSerializer, CheckSignupOTPSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 import jwt
 from .utils import Util
-from django.contrib.sites.shortcuts import get_current_site
-from django.urls import reverse
 from django.conf import settings
-from drf_yasg import openapi
-from drf_yasg.utils import swagger_auto_schema
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny, IsAuthenticated
