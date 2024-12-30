@@ -2,6 +2,8 @@ from django.db import models
 from autoslug import AutoSlugField
 import uuid
 from django.conf import settings
+
+
 # note i had to create nultple functions because lambda doesnt pass makemigrations and migrate
 
 # Named function to generate slug for ProductImages
@@ -30,7 +32,6 @@ def generate_order_item_slug(instance):
 
 
 class Category(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     title = models.CharField(max_length=200)
     slug = AutoSlugField(populate_from='title', unique=True, db_index=True)
 
@@ -38,17 +39,16 @@ class Category(models.Model):
         return self.title
 
 
-class Colour(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    name = models.CharField(max_length=200)
-    slug = AutoSlugField(populate_from='name', unique=True)
+class SubCategory(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="items")
+    title = models.CharField(max_length=200)
+    slug = AutoSlugField(populate_from='title', unique=True, db_index=True)
 
     def __str__(self):
-        return self.name
+        return self.title
 
 
 class Size(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     size = models.CharField(max_length=30)
     slug = AutoSlugField(populate_from='size', unique=True)
 
@@ -62,11 +62,12 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True)
     material = models.CharField(max_length=1000, blank=True, null=True)
     discount = models.BooleanField(default=False)
-    colour = models.ManyToManyField(Colour)
+    colour = models.CharField(max_length=1000, blank=True, null=True)
     size = models.ManyToManyField(Size)
-    image = models.ImageField(upload_to='img', blank=True, null=True, default='placeholder.jpg')
     price = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='products')
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, blank=True, null=True,
+                                    related_name='products_subcategory')
     slug = AutoSlugField(populate_from='name', unique=True, db_index=True)
     inventory = models.IntegerField(default=5)
     top_deal = models.BooleanField(default=False)
@@ -79,9 +80,6 @@ class ProductImages(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='img', default='placeholder.jpg', null=True, blank=True)
-    slug = AutoSlugField(
-        populate_from=generate_product_image_slug, unique=True, db_index=True
-    )
 
     def __str__(self):
         return f"{self.product.name} extra image"
