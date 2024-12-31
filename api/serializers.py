@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from ecommerce.models import *
 from django.db import transaction
-
+import json
 
 class SubCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,65 +19,43 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['title', 'slug']
 
 
-class SizeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Size
-        fields = ['size']
-
-
-class ProductImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductImages
-        fields = ['product', 'image']
-        extra_kwargs = {
-            'product': {'write_only': True},
-        }
-
-
-class ProductSerializer(serializers.ModelSerializer):
-    images = ProductImageSerializer(many=True, read_only=True)
-    category = CategorySerializer(read_only=False)
-    subcategory = SubCategorySerializer(read_only=False, required=False)
-    size = SizeSerializer(many=True, read_only=False)
-    uploaded_images = serializers.ListField(
-        child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
-        write_only=True,
-        required=True
-    )
+class GetProductSerializer(serializers.ModelSerializer):
+    category = serializers.SerializerMethodField(required=False)
+    subcategory = serializers.SerializerMethodField(required=False)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'slug', 'inventory', 'top_deal', 'images', 'category', 'subcategory', 'uploaded_images']
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'slug', 'inventory',
+                  'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
         read_only_fields = ['id']
 
-    def to_representation(self, instance):
-        # Override the to_representation method to return size as a list of strings
-        representation = super().to_representation(instance)
-        representation['size'] = [size['size'] for size in representation['size']]
-        representation['images'] = [name['image'] for name in representation['images']]
-        return representation
+    def get_category(self, obj):
+        if obj.category:
+            return {
+                "name": obj.category.title,
+                "slug": obj.category.slug
+            }
+        return None
 
-    def create(self, validated_data):
-        uploaded_images = validated_data.pop('uploaded_images', [])
+    def get_subcategory(self, obj):
+        # Return subcategory details like name and slug
+        if obj.subcategory:
+            return {
+                "name": obj.subcategory.title,
+                "slug": obj.subcategory.slug
+            }
+        return None
 
-        # Pop many-to-many fields from validated_data
-        colours = validated_data.pop('colour', [])
-        sizes = validated_data.pop('size', [])
 
-        # Create the Product instance
-        product = Product.objects.create(**validated_data)
+class ProductSerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False, write_only=True)
+    subcategory = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all(), required=False, write_only=True)
 
-        # Add many-to-many relationships
-        if colours:
-            product.colour.set(colours)
-        if sizes:
-            product.size.set(sizes)
-
-        # Handle uploaded images
-        for image in uploaded_images:
-            ProductImages.objects.create(product=product, image=image)
-
-        return product
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'slug', 'inventory',
+                  'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
+        read_only_fields = ['id']
 
 
 class SimpleProductSerializer(serializers.ModelSerializer):
