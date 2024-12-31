@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
-from .views import ApiProducts, ApiCart, ApiCartItem, ApiCategory, ApiSize, ApiOrder, ApiSubCategory
+from .views import ApiProducts, ApiCart, ApiCartItem, ApiCategory, ApiOrder, ApiSubCategory
 
 # Default router for general API views
 router = DefaultRouter()
@@ -9,7 +9,6 @@ router = DefaultRouter()
 # Register main resources like Products, Cart, Categories, etc.
 router.register('products', ApiProducts, basename='product')
 router.register('categories', ApiCategory, basename='category')
-router.register('sizes', ApiSize, basename='size')
 router.register('orders', ApiOrder, basename='order')
 router.register('carts', ApiCart, basename='cart')
 router.register('subcategory', ApiSubCategory, basename='subcategory')
