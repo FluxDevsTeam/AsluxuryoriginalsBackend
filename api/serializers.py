@@ -3,6 +3,7 @@ from ecommerce.models import *
 from django.db import transaction
 import json
 
+
 class SubCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = SubCategory
@@ -13,7 +14,6 @@ class SubCategorySerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Category
         fields = ['title', 'slug']
@@ -48,8 +48,8 @@ class GetProductSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False, write_only=True)
-    subcategory = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all(), required=False, write_only=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False)
+    subcategory = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all(), required=False)
 
     class Meta:
         model = Product
@@ -86,15 +86,12 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'items','owner', 'grand_total']
+        fields = ['id', 'items', 'owner', 'grand_total']
         read_only_fields = ['id', 'owner']
 
     def create(self, validated_data):
-        # Access the current user from the request object
         user = self.context['request'].user
-        # Set the owner to the current user
         validated_data['owner'] = user
-        # Create and return the new Cart instance
         return Cart.objects.create(**validated_data)
 
     def main_total(self, cart: Cart):
@@ -138,11 +135,10 @@ class AddCartItemSerializer(serializers.ModelSerializer):
             if cartitem.quantity + quantity > product.inventory:
                 raise serializers.ValidationError("The total quantity in your cart exceeds the available inventory.")
 
-            cartitem.quantity += quantity  # Update quantity
+            cartitem.quantity += quantity
             cartitem.save()
-            self.instance = cartitem  # Set the instance for the serializer
+            self.instance = cartitem
         except CartItems.DoesNotExist:
-            # Create a new cart item if it doesn't exist
             self.instance = CartItems.objects.create(cart_id=cart_id, **self.validated_data)
 
         return self.instance
@@ -185,6 +181,5 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'placed_at' , 'owner', 'items', 'slug']
+        fields = ['id', 'placed_at', 'owner', 'items', 'slug']
         read_only_fields = ['id']
-
