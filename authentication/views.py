@@ -1,6 +1,6 @@
 import random
 import datetime
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
@@ -8,7 +8,7 @@ from django.contrib.auth.hashers import make_password
 from customuser.models import User
 from rest_framework.viewsets import ViewSet
 from .serializers import UserSignupSerializer, LoginSerializer, EmailVerificationSerializer, ForgotPasswordSerializer, \
-    CheckOTPSerializer, CheckSignupOTPSerializer
+    CheckOTPSerializer, CheckSignupOTPSerializer, UserprofileSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 import jwt
 from .utils import Util
@@ -19,7 +19,36 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .security import create_token, decrypt_token
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
+
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+    class UserProfileViewSet(viewsets.ModelViewSet):
+        """
+        ViewSet for reading and editing the user's profile.
+        """
+        serializer_class = UserprofileSerializer
+        queryset = User.objects.all()
+        permission_classes = [IsAuthenticated]
+
+        def get_queryset(self):
+            """
+            Restrict the queryset to the currently authenticated user.
+            """
+            return User.objects.filter(id=self.request.user.id)
+
+        def update(self, request, *args, **kwargs):
+            """
+            Allow authenticated users to update their profile (name and email).
+            """
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            return Response(serializer.data)
 
 
 class UserSignupViewSet(viewsets.ModelViewSet):
@@ -113,7 +142,7 @@ class CheckSignupOTPViewSet(viewsets.ModelViewSet):
                 'message': 'OTP expired. Try again!',
                 'status': False,
             }, status=status.HTTP_400_BAD_REQUEST)
-         
+
 
 class UserLoginViewSet(viewsets.ModelViewSet):
     serializer_class = LoginSerializer
