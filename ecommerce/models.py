@@ -4,14 +4,8 @@ import uuid
 from django.conf import settings
 
 
-# note i had to create nultple functions because lambda doesnt pass makemigrations and migrate
+# note i had to create multiple functions because lambda doesnt pass makemigrations and migrate
 
-# Named function to generate slug for ProductImages
-def generate_product_image_slug(instance):
-    return f"{instance.product.name}-other-image"
-
-
-# Named function to generate slug for Cart
 def generate_cart_slug(instance):
     return f"{instance.owner.email}-cart"
 
