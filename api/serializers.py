@@ -122,24 +122,19 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         quantity = self.validated_data['quantity']
         user = self.context['request'].user
 
-        # Fetch the product to check inventory
         try:
             product = Product.objects.get(pk=product_id)
         except Product.DoesNotExist:
             raise serializers.ValidationError("The product does not exist.")
 
-        # Check if the desired quantity exceeds the product inventory
         if quantity > product.inventory:
             raise serializers.ValidationError("The requested quantity exceeds the available inventory.")
 
-        # Ensure 'owner' is set in the validated data
         self.validated_data['owner'] = user
 
         try:
-            # Check if the cart item already exists
             cartitem = CartItems.objects.get(product_id=product_id, cart_id=cart_id)
 
-            # Check if the combined quantity exceeds inventory
             if cartitem.quantity + quantity > product.inventory:
                 raise serializers.ValidationError("The total quantity in your cart exceeds the available inventory.")
 
