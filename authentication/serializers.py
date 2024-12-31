@@ -13,6 +13,10 @@ from customuser.models import User
 #         'email': {'required': True, 'allow_blank': False},
 #         'password': {'required': True, 'allow_blank': False},
 #     }
+class UserprofileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email']
 
 
 class UserSignupSerializer(serializers.ModelSerializer):
