@@ -1,23 +1,18 @@
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-import uuid
-from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.response import Response
 from .permissions import IsAdminOrReadOnly, IsOwner, IsOwnerOrAdmin
 from ecommerce.models import Product, Category, Cart, Order, CartItems, OrderItem, SubCategory
 from .filters import ProductFilter
 from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, \
     AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, SimpleProductSerializer, \
     SubCategorySerializer, GetProductSerializer
-from rest_framework.parsers import MultiPartParser, FormParser
-import requests
+
 
 import uuid
 import requests
@@ -101,7 +96,6 @@ class ApiCart(viewsets.ModelViewSet):
         user = request.user
         cart_id = str(cart.id)
 
-        # Validate inventory
         for cart_item in cart_items:
             product = cart_item.product
             if product.inventory < cart_item.quantity:
@@ -113,7 +107,6 @@ class ApiCart(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Call initiate_payment and handle the response
         return initiate_payment(amount, email, cart_id, user)
 
     @action(detail=False, methods=["POST"])
@@ -129,7 +122,6 @@ class ApiCart(viewsets.ModelViewSet):
             cart = get_object_or_404(Cart, id=cart_id, owner=request.user)
             cart_items = CartItems.objects.filter(cart=cart)
 
-            # Create the order
             order = Order.objects.create(owner=request.user)
             order_items = []
             for cart_item in cart_items:
@@ -148,11 +140,9 @@ class ApiCart(viewsets.ModelViewSet):
                 )
             OrderItem.objects.bulk_create(order_items)
 
-            # Clear the cart
             cart_items.delete()
             cart.delete()
 
-            # Return success response
             serializer = OrderSerializer(order)
             return Response({
                 "message": "Payment successful, order created.",
@@ -211,15 +201,6 @@ class ApiSubCategory(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['title']
     lookup_field = 'slug'
-
-
-# class ApiSize(viewsets.ModelViewSet):
-#     permission_classes = [IsAdminOrReadOnly, ]
-#     serializer_class = SizeSerializer
-#     queryset = Size.objects.all()
-#     filter_backends = [DjangoFilterBackend, SearchFilter]
-#     search_fields = ['size']
-#     lookup_field = 'slug'
 
 
 class ApiOrder(viewsets.ModelViewSet):
