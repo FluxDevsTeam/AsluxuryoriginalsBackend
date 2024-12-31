@@ -48,22 +48,14 @@ class SubCategory(models.Model):
         return self.title
 
 
-class Size(models.Model):
-    size = models.CharField(max_length=30)
-    slug = AutoSlugField(populate_from='size', unique=True)
-
-    def __str__(self):
-        return self.size
-
-
 class Product(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
     material = models.CharField(max_length=1000, blank=True, null=True)
     discount = models.BooleanField(default=False)
-    colour = models.CharField(max_length=1000, blank=True, null=True)
-    size = models.ManyToManyField(Size)
+    colour = models.JSONField(blank=True, null=True)  # Replace ArrayField
+    size = models.JSONField(blank=True, null=True)  # Replace ArrayField
     price = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='products')
     subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, blank=True, null=True,
@@ -71,18 +63,12 @@ class Product(models.Model):
     slug = AutoSlugField(populate_from='name', unique=True, db_index=True)
     inventory = models.IntegerField(default=5)
     top_deal = models.BooleanField(default=False)
+    image1 = models.ImageField(upload_to='products/images/', blank=True, null=True)
+    image2 = models.ImageField(upload_to='products/images/', blank=True, null=True)
+    image3 = models.ImageField(upload_to='products/images/', blank=True, null=True)
 
     def __str__(self):
         return self.name
-
-
-class ProductImages(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='img', default='placeholder.jpg', null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.product.name} extra image"
 
 
 class Cart(models.Model):
