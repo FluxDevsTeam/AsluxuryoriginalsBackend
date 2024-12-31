@@ -11,11 +11,11 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from .permissions import IsAdminOrReadOnly, IsOwner, IsOwnerOrAdmin
-from ecommerce.models import Product, Category, Cart, Order, Size, CartItems, OrderItem, SubCategory
+from ecommerce.models import Product, Category, Cart, Order, CartItems, OrderItem, SubCategory
 from .filters import ProductFilter
 from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, \
     AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, SimpleProductSerializer, \
-    SizeSerializer, SubCategorySerializer
+    SubCategorySerializer, GetProductSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 import requests
 
@@ -73,7 +73,12 @@ class ApiProducts(viewsets.ModelViewSet):
     pagination_class = PageNumberPagination
     lookup_field = 'slug'
 
-    serializer_class = ProductSerializer
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return GetProductSerializer
+        elif self.action == 'retrieve':
+            return GetProductSerializer
+        return ProductSerializer
 
     def get_queryset(self):
         return Product.objects.filter(
@@ -190,6 +195,15 @@ class ApiCategory(viewsets.ModelViewSet):
     lookup_field = 'slug'
 
 
+class ApiCategory(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrReadOnly, ]
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all()
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['title']
+    lookup_field = 'slug'
+
+
 class ApiSubCategory(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly, ]
     serializer_class = SubCategorySerializer
@@ -199,13 +213,13 @@ class ApiSubCategory(viewsets.ModelViewSet):
     lookup_field = 'slug'
 
 
-class ApiSize(viewsets.ModelViewSet):
-    permission_classes = [IsAdminOrReadOnly, ]
-    serializer_class = SizeSerializer
-    queryset = Size.objects.all()
-    filter_backends = [DjangoFilterBackend, SearchFilter]
-    search_fields = ['size']
-    lookup_field = 'slug'
+# class ApiSize(viewsets.ModelViewSet):
+#     permission_classes = [IsAdminOrReadOnly, ]
+#     serializer_class = SizeSerializer
+#     queryset = Size.objects.all()
+#     filter_backends = [DjangoFilterBackend, SearchFilter]
+#     search_fields = ['size']
+#     lookup_field = 'slug'
 
 
 class ApiOrder(viewsets.ModelViewSet):
