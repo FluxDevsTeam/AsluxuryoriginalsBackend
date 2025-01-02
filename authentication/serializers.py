@@ -1,5 +1,18 @@
 from rest_framework import serializers
 from customuser.models import User
+from .models import ForgotPasswordRequest
+
+
+class ForgotPasswordRequestSerializer(serializers.Serializer):
+    otp = serializers.CharField(max_length=6, required=True)
+    email = serializers.EmailField(required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, required=True, min_length=8)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        return attrs
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
