@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'rest_framework',
     'django_filters',
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     'customuser',
     'api',
     'ecommerce',
+    'authentication',
 ]
 
 MIDDLEWARE = [
@@ -167,6 +169,7 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
+    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('JWT',),
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=2),
