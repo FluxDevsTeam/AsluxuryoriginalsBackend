@@ -1,54 +1,184 @@
+import requests
 import random
 import datetime
+from django.utils import timezone
+from django.contrib.auth import logout
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
-from rest_framework.generics import GenericAPIView
-from rest_framework.response import Response
+
 from django.contrib.auth.hashers import make_password
+from rest_framework.exceptions import AuthenticationFailed
+
 from customuser.models import User
 from rest_framework.viewsets import ViewSet
 from .serializers import UserSignupSerializer, LoginSerializer, EmailVerificationSerializer, ForgotPasswordSerializer, \
-    CheckOTPSerializer, CheckSignupOTPSerializer, UserprofileSerializer
+    CheckOTPSerializer, CheckSignupOTPSerializer, PasswordChangeRequestSerializer, UserProfileSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-import jwt
-from .utils import Util
+from .utils import EmailThread
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .security import create_token, decrypt_token
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from rest_framework.response import Response
+from .models import EmailChangeRequest, PasswordChangeRequest
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
-    class UserProfileViewSet(viewsets.ModelViewSet):
+    serializer_class = UserProfileSerializer
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.filter(id=self.request.user.id)
+
+    @action(detail=False, methods=['post'], url_path='request-email-change')
+    def request_email_change(self, request):
+        user = request.user
+        new_email = request.data.get('new_email')
+
+        if not new_email:
+            return Response({"error": "New email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp = random.randint(100000, 999999)
+
+        # Send OTP email
+        send_mail(
+            subject="Email Change OTP",
+            message=f"Your OTP is: {otp}",
+            from_email="no-reply@example.com",
+            recipient_list=[new_email],
+        )
+
+        EmailChangeRequest.objects.create(user=user, new_email=new_email, otp=otp)
+
+        return Response({"message": "OTP sent to the new email address."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='verify-email-change')
+    def verify_email_change(self, request):
+        otp = request.data.get('otp')
+
+        if not otp:
+            return Response({"error": "OTP is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        email_change_request = EmailChangeRequest.objects.filter(user=user, otp=otp).first()
+
+        if not email_change_request:
+            return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.email = email_change_request.new_email
+        user.save()
+        email_change_request.delete()
+
+        return Response({"message": "Email updated successfully."}, status=status.HTTP_200_OK)
+
+
+class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
+    """
+    Handles password change requests with OTP verification.
+    """
+    permission_classes = [IsAuthenticated]
+    queryset = PasswordChangeRequest.objects.all()
+    serializer_class = PasswordChangeRequestSerializer
+
+    @action(detail=False, methods=['post'], url_path='request-password-change')
+    def request_password_change(self, request):
+        user = request.user
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if not new_password or not confirm_password:
+            return Response({"error": "Both new_password and confirm_password are required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if new_password != confirm_password:
+            return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create or update the password change request
+        PasswordChangeRequest.objects.filter(user=user).delete()
+        otp = random.randint(100000, 999999)
+
+        send_mail(
+            subject="Password Change OTP",
+            message=f"Your OTP for password change is: {otp}",
+            from_email="no-reply@example.com",
+            recipient_list=[user.email],
+        )
+
+        PasswordChangeRequest.objects.create(user=user, otp=otp, new_password=new_password)
+
+        return Response({"message": "An OTP has been sent to your email."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='resend-otp')
+    def resend_otp(self, request):
         """
-        ViewSet for reading and editing the user's profile.
+        Request a new OTP if the previous one has expired or was invalid.
         """
-        serializer_class = UserprofileSerializer
-        queryset = User.objects.all()
-        permission_classes = [IsAuthenticated]
+        user = request.user
 
-        def get_queryset(self):
-            """
-            Restrict the queryset to the currently authenticated user.
-            """
-            return User.objects.filter(id=self.request.user.id)
+        # Check for an existing request
+        password_change_request = PasswordChangeRequest.objects.filter(user=user).first()
 
-        def update(self, request, *args, **kwargs):
-            """
-            Allow authenticated users to update their profile (name and email).
-            """
-            partial = kwargs.pop('partial', False)
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
+        if not password_change_request:
+            return Response({"error": "No pending password change request found."}, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response(serializer.data)
+        # Generate a new OTP
+        otp = random.randint(100000, 999999)
+        password_change_request.otp = otp
+        password_change_request.created_at = timezone.now()  # Reset timestamp to current timezone-aware time
+        password_change_request.save()
+
+        send_mail(
+            subject="Password Change OTP - Resent",
+            message=f"Your new OTP for password change is: {otp}",
+            from_email="no-reply@example.com",
+            recipient_list=[user.email],
+        )
+
+        return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='verify-password-change')
+    def verify_password_change(self, request):
+        """
+        Step 2: Verify OTP and change password.
+        """
+        otp = request.data.get('otp')
+
+        if not otp:
+            return Response({"error": "OTP is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        password_change_request = PasswordChangeRequest.objects.filter(user=user).first()
+
+        if not password_change_request:
+            return Response({"error": "No pending password change request found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate OTP
+        if str(password_change_request.otp) != str(otp):
+            return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP has expired
+        otp_age = (timezone.now() - password_change_request.created_at).total_seconds()  # Use timezone-aware time
+        if otp_age > 300:  # 300 seconds = 5 minutes
+            return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update user's password
+        user.password = make_password(password_change_request.new_password)
+        user.save()
+
+        password_change_request.delete()
+
+        # Invalidate refresh token if provided
+        refresh_token = request.data.get('refresh_token')
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()  # Blacklist the refresh token
+            except Exception as e:
+                raise AuthenticationFailed('Refresh token is invalid or expired.')
+        return Response({"message": "Password changed successfully. You have been logged out."},
+                        status=status.HTTP_200_OK)
 
 
 class UserSignupViewSet(viewsets.ModelViewSet):
@@ -62,7 +192,6 @@ class UserSignupViewSet(viewsets.ModelViewSet):
         data = request.data
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        print(serializer)
         email = data['email']
         if not User.objects.filter(email=email).exists():
             User.objects.create(
@@ -83,12 +212,12 @@ class UserSignupViewSet(viewsets.ModelViewSet):
             }
             token = create_token(payload)
 
-            send_mail(
-                'OTP for signup',
-                f'Your OTP is {otp}',
-                settings.EMAIL_HOST_USER,
-                [user.email],
+            email_thread = EmailThread(
+                subject='OTP for signup',
+                message=f'Your OTP is {otp}',
+                recipient_list=[user.email],
             )
+            email_thread.start()
 
             return Response({
                 'token': token
@@ -169,12 +298,12 @@ class UserLoginViewSet(viewsets.ModelViewSet):
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
-        subject = "login"
-        message = "your login was successful."
-        from_email = os.getenv("EMAIL")
-        recipient_list = [data.get('email')]
-
-        send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+        email_thread = EmailThread(
+            subject='Login Successful',
+            message=f'Your login to ASLuxeryOriginals.com was successful',
+            recipient_list=[email],
+        )
+        email_thread.start()
         return Response({
             'access_token': access_token,
             'refresh_token': str(refresh),
@@ -182,9 +311,7 @@ class UserLoginViewSet(viewsets.ModelViewSet):
 
 
 class SendOTPViewSet(viewsets.ModelViewSet):
-    """
-    Viewset for handling forget password functionality.
-    """
+
     serializer_class = ForgotPasswordSerializer
 
     # permission_classes = [AllowAny]  # Allow any user (even unauthenticated) to access this viewset
@@ -263,8 +390,11 @@ class LogoutViewSet(ViewSet):
     def logout(self, request):
         try:
             refresh_token = request.data.get('refresh_token')
-            token = RefreshToken(refresh_token)
-            token.blacklist()  # Invalidate the refresh token
-            return Response({"detail": "Logout successful."}, status=status.HTTP_200_OK)
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()  # Invalidate the refresh token
+                return Response({"detail": "Logout successful."}, status=status.HTTP_200_OK)
+            else:
+                return Response({"detail": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"detail": "Error during logout.", "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
