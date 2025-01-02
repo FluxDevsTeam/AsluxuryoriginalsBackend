@@ -2,21 +2,22 @@ from rest_framework import serializers
 from customuser.models import User
 
 
-# class UserSignupSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ('first_name', 'last_name', 'email', 'password')
-#
-#     extra_kwargs = {
-#         'first_name': {'required': True, 'allow_blank': False},
-#         'last_name': {'required': True, 'allow_blank': False},
-#         'email': {'required': True, 'allow_blank': False},
-#         'password': {'required': True, 'allow_blank': False},
-#     }
-class UserprofileSerializer(serializers.ModelSerializer):
+class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email']
+        fields = ['id', 'first_name', 'last_name', 'email']
+        read_only_fields = ['id', 'email']
+
+
+class PasswordChangeRequestSerializer(serializers.Serializer):
+    otp = serializers.CharField(max_length=6, required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, required=True, min_length=8)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        return attrs
 
 
 class UserSignupSerializer(serializers.ModelSerializer):
@@ -55,7 +56,8 @@ class LoginSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'username')
+        fields = ('id', 'first_name', 'last_name', 'email')
+        read_only_fields = ['email', ]
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
