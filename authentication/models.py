@@ -2,6 +2,16 @@ from django.db import models
 from customuser.models import User
 
 
+class ForgotPasswordRequest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    otp = models.IntegerField()
+    new_password = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"ForgotPasswordRequest for {self.user.email}"
+
+
 class EmailChangeRequest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_change_requests')
     new_email = models.EmailField()
