@@ -27,12 +27,40 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='request-forgot-password')
     def request_forgot_password(self, request):
+        """
+        Step 1: Send an email with a URL to reset the password.
+        """
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Simulate sending an email with the reset password URL
+        reset_url = f"https://example.com/reset-password?email={email}"
+        send_mail(
+            subject="Password Reset Request",
+            message=f"Click the following link to reset your password: {reset_url}",
+            from_email="no-reply@example.com",
+            recipient_list=[email],
+        )
+
+        return Response({"message": "A password reset link has been sent to your email."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='set-new-password')
+    def set_new_password(self, request):
+        """
+        Step 2: Accept new password and send OTP to email.
+        """
         email = request.data.get('email')
         new_password = request.data.get('new_password')
         confirm_password = request.data.get('confirm_password')
 
         if not email or not new_password or not confirm_password:
-            return Response({"error": "Email, new_password, and confirm_password are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Email, new_password, and confirm_password are required."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         if new_password != confirm_password:
             return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
@@ -56,8 +84,11 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "An OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['post'], url_path='verify-forgot-password')
-    def verify_forgot_password(self, request):
+    @action(detail=False, methods=['post'], url_path='verify-otp')
+    def verify_otp(self, request):
+        """
+        Step 3: Verify OTP and update password.
+        """
         email = request.data.get('email')
         otp = request.data.get('otp')
 
@@ -98,6 +129,39 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
             'access_token': access_token,
             'refresh_token': str(refresh),
         }, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='resend-otp')
+    def resend_otp(self, request):
+        """
+        Step 4: Resend OTP if expired or invalid.
+        """
+        email = request.data.get('email')
+
+        if not email:
+            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        forgot_password_request = ForgotPasswordRequest.objects.filter(user=user).first()
+        if not forgot_password_request:
+            return Response({"error": "No pending forgot password request found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate a new OTP
+        otp = random.randint(100000, 999999)
+        forgot_password_request.otp = otp
+        forgot_password_request.created_at = timezone.now()  # Reset timestamp
+        forgot_password_request.save()
+
+        send_mail(
+            subject="Forgot Password OTP - Resent",
+            message=f"Your new OTP for password reset is: {otp}",
+            from_email="no-reply@example.com",
+            recipient_list=[email],
+        )
+
+        return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
