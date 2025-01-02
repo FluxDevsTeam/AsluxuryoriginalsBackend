@@ -1,20 +1,33 @@
-from django.core.mail import EmailMessage
 import threading
+import time
+
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 class EmailThread(threading.Thread):
-
-    def __init__(self, email):
-        self.email = email
-        threading.Thread.__init__(self)
+    def __init__(self, subject, message, recipient_list):
+        self.subject = subject
+        self.message = message
+        self.recipient_list = recipient_list
+        super().__init__()
 
     def run(self):
-        self.email.send()
+        send_mail(
+            self.subject,
+            self.message,
+            settings.EMAIL_HOST_USER,
+            self.recipient_list,
+        )
 
 
-class Util:
-    @staticmethod
-    def send_email(data):
-        email = EmailMessage(
-            subject=data['email_subject'], body=data['email_body'], to=[data['to_email']])
-        EmailThread(email).start()
+def send_otp_to_email(email):
+    otp = random.randint(100000, 999999)
+    send_mail(
+        subject="Your OTP Code",
+        message=f"Use this OTP to verify your email: {otp}",
+        from_email="no-reply@example.com",  # Replace with your email address
+        recipient_list=[email],
+        fail_silently=False,
+    )
+    return str(otp)  # Ensure OTP is returned as a string
