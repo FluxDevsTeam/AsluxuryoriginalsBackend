@@ -1,12 +1,13 @@
 from django.urls import path, re_path, include
 from rest_framework.routers import DefaultRouter
 from .views import (UserSignupViewSet, UserLoginViewSet, SendOTPViewSet, CheckOTPViewSet, CheckSignupOTPViewSet,
-                    LogoutViewSet, UserProfileViewSet, PasswordChangeRequestViewSet)
+                    LogoutViewSet, UserProfileViewSet, PasswordChangeRequestViewSet, ForgotPasswordViewSet)
 from rest_framework_simplejwt.views import TokenRefreshView
 
 router = DefaultRouter()
 router.register('profile', UserProfileViewSet, basename='userprofile')
 router.register('password-change', PasswordChangeRequestViewSet, basename='passwordchange')
+router.register('forgot-password', ForgotPasswordViewSet, basename='forgot-password')
 
 
 urlpatterns = [
