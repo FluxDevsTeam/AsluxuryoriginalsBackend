@@ -39,7 +39,7 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
             return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Simulate sending an email with the reset password URL
-        reset_url = f"https://example.com/reset-password?email={email}"
+        reset_url = f"http://127.0.0.1:8000/auth/forgot-password/set-new-password/?email={email}"
         send_mail(
             subject="Password Reset Request",
             message=f"Click the following link to reset your password: {reset_url}",
