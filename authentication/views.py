@@ -2,17 +2,14 @@ import requests
 import random
 import datetime
 from django.utils import timezone
-from django.contrib.auth import logout
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
-
 from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import AuthenticationFailed
-
 from customuser.models import User
 from rest_framework.viewsets import ViewSet
-from .serializers import UserSignupSerializer, LoginSerializer, EmailVerificationSerializer, ForgotPasswordSerializer, \
-    CheckOTPSerializer, CheckSignupOTPSerializer, PasswordChangeRequestSerializer, UserProfileSerializer
+from .serializers import UserSignupSerializer, LoginSerializer, ForgotPasswordSerializer, CheckOTPSerializer, \
+ CheckSignupOTPSerializer, PasswordChangeRequestSerializer, UserProfileSerializer, ForgotPasswordRequestSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .utils import EmailThread
 from django.conf import settings
@@ -21,7 +18,86 @@ from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .security import create_token, decrypt_token
 from rest_framework.response import Response
-from .models import EmailChangeRequest, PasswordChangeRequest
+from .models import EmailChangeRequest, PasswordChangeRequest, ForgotPasswordRequest
+
+
+class ForgotPasswordViewSet(viewsets.ModelViewSet):
+    queryset = ForgotPasswordRequest.objects.all()
+    serializer_class = ForgotPasswordRequestSerializer
+
+    @action(detail=False, methods=['post'], url_path='request-forgot-password')
+    def request_forgot_password(self, request):
+        email = request.data.get('email')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if not email or not new_password or not confirm_password:
+            return Response({"error": "Email, new_password, and confirm_password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_password != confirm_password:
+            return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create or update the forgot password request
+        ForgotPasswordRequest.objects.filter(user=user).delete()
+        otp = random.randint(100000, 999999)
+
+        send_mail(
+            subject="Forgot Password OTP",
+            message=f"Your OTP for password reset is: {otp}",
+            from_email="no-reply@example.com",
+            recipient_list=[email],
+        )
+
+        ForgotPasswordRequest.objects.create(user=user, otp=otp, new_password=new_password)
+
+        return Response({"message": "An OTP has been sent to your email."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='verify-forgot-password')
+    def verify_forgot_password(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+
+        if not email or not otp:
+            return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        forgot_password_request = ForgotPasswordRequest.objects.filter(user=user).first()
+        if not forgot_password_request:
+            return Response({"error": "No pending forgot password request found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate OTP
+        if str(forgot_password_request.otp) != str(otp):
+            return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP has expired
+        otp_age = (timezone.now() - forgot_password_request.created_at).total_seconds()
+        if otp_age > 300:  # 5 minutes
+            return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the user's password
+        user.password = make_password(forgot_password_request.new_password)
+        if not user.is_verified:
+            user.is_verified = True  # Mark user as verified
+        user.save()
+
+        forgot_password_request.delete()
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        return Response({
+            'message': 'Password reset successful.',
+            'access_token': access_token,
+            'refresh_token': str(refresh),
+        }, status=status.HTTP_201_CREATED)
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
