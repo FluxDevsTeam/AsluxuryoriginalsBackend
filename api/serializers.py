@@ -130,7 +130,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         self.validated_data['owner'] = user
 
         try:
-            cartitem = CartItems.objects.get(product_id=product_id, cart_slug=cart_slug)
+            cartitem = CartItems.objects.get(product_id=product_id, cart_id=cart_id)
 
             if cartitem.quantity + quantity > product.inventory:
                 raise serializers.ValidationError("The total quantity in your cart exceeds the available inventory.")
