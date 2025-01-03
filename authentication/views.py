@@ -9,8 +9,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from customuser.models import User
 from rest_framework.viewsets import ViewSet
 from .serializers import UserSignupSerializer, LoginSerializer, ForgotPasswordSerializer, CheckOTPSerializer, \
-    PasswordChangeRequestSerializer, UserProfileSerializer, ForgotPasswordRequestSerializer, \
-    VerifyOtpSerializer, ResendOtpSerializer
+    PasswordChangeRequestSerializer, UserProfileSerializer, ForgotPasswordRequestSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .utils import EmailThread
 from django.conf import settings
@@ -19,7 +18,7 @@ from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .security import create_token, decrypt_token
 from rest_framework.response import Response
-from .models import EmailChangeRequest, PasswordChangeRequest, ForgotPasswordRequest
+from .models import EmailChangeRequest, PasswordChangeRequest, ForgotPasswordRequest, NameChangeRequest
 from django.utils.timezone import now
 
 
@@ -162,7 +161,6 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
-    queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -170,15 +168,20 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='request-email-change')
     def request_email_change(self, request):
-        user = request.user
-        new_email = request.data.get('new_email')
+        """
+        Request email change with OTP sent to the new email.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not new_email:
-            return Response({"error": "New email is required."}, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        new_email = serializer.validated_data.get('new_email')
+        password = serializer.validated_data.get('password')
+
+        if not user.check_password(password):
+            return Response({"error": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
 
         otp = random.randint(100000, 999999)
-
-        # Send OTP email
         email_thread = EmailThread(
             subject='Email Change OTP',
             message=f"Your OTP is: {otp}",
@@ -187,27 +190,131 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         email_thread.start()
 
         EmailChangeRequest.objects.create(user=user, new_email=new_email, otp=otp)
-
         return Response({"message": "OTP sent to the new email address."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='resend-email-change-otp')
+    def resend_email_change_otp(self, request):
+        """
+        Resend OTP for email change.
+        """
+        user = request.user
+        email_change_request = EmailChangeRequest.objects.filter(user=user).first()
+
+        if not email_change_request:
+            return Response({"error": "No pending email change request found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp = random.randint(100000, 999999)
+        email_change_request.otp = otp
+        email_change_request.created_at = timezone.now()
+        email_change_request.save()
+
+        email_thread = EmailThread(
+            subject='Resend Email Change OTP',
+            message=f"Your new OTP is: {otp}",
+            recipient_list=[email_change_request.new_email],
+        )
+        email_thread.start()
+
+        return Response({"message": "New OTP sent to the new email address."}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], url_path='verify-email-change')
     def verify_email_change(self, request):
-        otp = request.data.get('otp')
-
-        if not otp:
-            return Response({"error": "OTP is required."}, status=status.HTTP_400_BAD_REQUEST)
+        """
+        Verify OTP and update the user's email.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         user = request.user
-        email_change_request = EmailChangeRequest.objects.filter(user=user, otp=otp).first()
+        otp = serializer.validated_data.get('otp')
 
+        email_change_request = EmailChangeRequest.objects.filter(user=user).first()
         if not email_change_request:
+            return Response({"error": "No pending email change request found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP matches
+        if str(email_change_request.otp) != str(otp):
             return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP has expired (5 minutes validity)
+        otp_age = (timezone.now() - email_change_request.created_at).total_seconds()
+        if otp_age > 300:
+            return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
 
         user.email = email_change_request.new_email
         user.save()
         email_change_request.delete()
 
         return Response({"message": "Email updated successfully."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='request-name-change')
+    def request_name_change(self, request):
+        """
+        Request name change with OTP sent to email.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        new_first_name = serializer.validated_data.get('new_first_name')
+        new_last_name = serializer.validated_data.get('new_last_name')
+
+        if not new_first_name and not new_last_name:
+            return Response({"error": "At least one of new_first_name or new_last_name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp = random.randint(100000, 999999)
+        email_thread = EmailThread(
+            subject='Name Change OTP',
+            message=f"Your OTP for name change is: {otp}",
+            recipient_list=[user.email],
+        )
+        email_thread.start()
+
+        NameChangeRequest.objects.create(
+            user=user,
+            new_first_name=new_first_name,
+            new_last_name=new_last_name,
+            otp=otp,
+        )
+
+        return Response({"message": "OTP sent to your email address."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='verify-name-change')
+    @action(detail=False, methods=['post'], url_path='verify-name-change')
+    def verify_name_change(self, request):
+        """
+        Verify OTP and update the user's name.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        otp = serializer.validated_data.get('otp')
+
+        name_change_request = NameChangeRequest.objects.filter(user=user).first()
+        if not name_change_request:
+            return Response({"error": "No pending name change request found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP matches
+        if str(name_change_request.otp) != str(otp):
+            return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP has expired (5 minutes validity)
+        otp_age = (timezone.now() - name_change_request.created_at).total_seconds()
+        if otp_age > 300:
+            return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if name_change_request.new_first_name:
+            user.first_name = name_change_request.new_first_name
+        if name_change_request.new_last_name:
+            user.last_name = name_change_request.new_last_name
+
+        user.save()
+
+        # Delete the NameChangeRequest after successful update
+        name_change_request.delete()
+
+        return Response({"message": "Name updated successfully."}, status=status.HTTP_200_OK)
 
 
 class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
@@ -324,7 +431,6 @@ class UserSignupViewSet(viewsets.ViewSet):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Extracting the email and password (the passwords are now validated in the serializer)
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
@@ -355,7 +461,7 @@ class UserSignupViewSet(viewsets.ViewSet):
             first_name=serializer.validated_data['first_name'],
             last_name=serializer.validated_data['last_name'],
             email=email,
-            password=make_password(password),  # Using the password validated in the serializer
+            password=make_password(password),
             otp=otp,
             otp_created_at=now()
         )
@@ -374,7 +480,7 @@ class UserSignupViewSet(viewsets.ViewSet):
         """
         Verifies the OTP sent to the user's email.
         """
-        serializer = VerifyOtpSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
         otp = serializer.validated_data['otp']
@@ -403,7 +509,7 @@ class UserSignupViewSet(viewsets.ViewSet):
         """
         Resends the OTP to the user's email.
         """
-        serializer = ResendOtpSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
 
