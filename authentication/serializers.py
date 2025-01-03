@@ -14,7 +14,7 @@ class ForgotPasswordRequestSerializer(serializers.Serializer):
         return attrs
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+class UserProfileSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6, required=True)
     new_email = serializers.CharField(write_only=True, required=True, min_length=8)
     new_first_name = serializers.CharField(write_only=True, required=True, min_length=8)
