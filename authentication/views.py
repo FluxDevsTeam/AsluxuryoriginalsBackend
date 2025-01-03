@@ -38,14 +38,13 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         if not user:
             return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Simulate sending an email with the reset password URL
         reset_url = f"http://127.0.0.1:8000/auth/forgot-password/set-new-password/?email={email}"
-        send_mail(
-            subject="Password Reset Request",
+        email_thread = EmailThread(
+            subject='Password Reset Request',
             message=f"Click the following link to reset your password: {reset_url}",
-            from_email="no-reply@example.com",
             recipient_list=[email],
         )
+        email_thread.start()
 
         return Response({"message": "A password reset link has been sent to your email."}, status=status.HTTP_200_OK)
 
@@ -73,12 +72,12 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         ForgotPasswordRequest.objects.filter(user=user).delete()
         otp = random.randint(100000, 999999)
 
-        send_mail(
-            subject="Forgot Password OTP",
+        email_thread = EmailThread(
+            subject='Forgot Password OTP',
             message=f"Your OTP for password reset is: {otp}",
-            from_email="no-reply@example.com",
             recipient_list=[email],
         )
+        email_thread.start()
 
         ForgotPasswordRequest.objects.create(user=user, otp=otp, new_password=new_password)
 
@@ -154,12 +153,12 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         forgot_password_request.created_at = timezone.now()  # Reset timestamp
         forgot_password_request.save()
 
-        send_mail(
-            subject="Forgot Password OTP - Resent",
+        email_thread = EmailThread(
+            subject='Forgot Password OTP - Resent',
             message=f"Your new OTP for password reset is: {otp}",
-            from_email="no-reply@example.com",
             recipient_list=[email],
         )
+        email_thread.start()
 
         return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
@@ -183,12 +182,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         otp = random.randint(100000, 999999)
 
         # Send OTP email
-        send_mail(
-            subject="Email Change OTP",
+        email_thread = EmailThread(
+            subject='Email Change OTP',
             message=f"Your OTP is: {otp}",
-            from_email="no-reply@example.com",
             recipient_list=[new_email],
         )
+        email_thread.start()
 
         EmailChangeRequest.objects.create(user=user, new_email=new_email, otp=otp)
 
@@ -239,12 +238,12 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         PasswordChangeRequest.objects.filter(user=user).delete()
         otp = random.randint(100000, 999999)
 
-        send_mail(
-            subject="Password Change OTP",
+        email_thread = EmailThread(
+            subject='Password Change OTP',
             message=f"Your OTP for password change is: {otp}",
-            from_email="no-reply@example.com",
             recipient_list=[user.email],
         )
+        email_thread.start()
 
         PasswordChangeRequest.objects.create(user=user, otp=otp, new_password=new_password)
 
@@ -269,12 +268,12 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         password_change_request.created_at = timezone.now()  # Reset timestamp to current timezone-aware time
         password_change_request.save()
 
-        send_mail(
-            subject="Password Change OTP - Resent",
+        email_thread = EmailThread(
+            subject='Password Change OTP - Resent',
             message=f"Your new OTP for password change is: {otp}",
-            from_email="no-reply@example.com",
             recipient_list=[user.email],
         )
+        email_thread.start()
 
         return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
