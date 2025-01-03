@@ -9,7 +9,8 @@ from rest_framework.exceptions import AuthenticationFailed
 from customuser.models import User
 from rest_framework.viewsets import ViewSet
 from .serializers import UserSignupSerializer, LoginSerializer, ForgotPasswordSerializer, CheckOTPSerializer, \
- CheckSignupOTPSerializer, PasswordChangeRequestSerializer, UserProfileSerializer, ForgotPasswordRequestSerializer
+    PasswordChangeRequestSerializer, UserProfileSerializer, ForgotPasswordRequestSerializer, \
+    VerifyOtpSerializer, ResendOtpSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .utils import EmailThread
 from django.conf import settings
@@ -19,6 +20,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .security import create_token, decrypt_token
 from rest_framework.response import Response
 from .models import EmailChangeRequest, PasswordChangeRequest, ForgotPasswordRequest
+from django.utils.timezone import now
 
 
 class ForgotPasswordViewSet(viewsets.ModelViewSet):
@@ -308,141 +310,123 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
 
-class UserSignupViewSet(viewsets.ModelViewSet):
+class UserSignupViewSet(viewsets.ViewSet):
+    """
+    Viewset for handling user signup and OTP verification.
+    """
+
     serializer_class = UserSignupSerializer
-    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         """
-        Handle user signup and send OTP.
+        Handles user signup.
         """
-        if request.method != 'POST':
-            return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-        data = request.data
-        serializer = self.get_serializer(data=data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = data['email']
+        # Extracting the email and password (the passwords are now validated in the serializer)
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+
+        # Check if the user already exists
         user = User.objects.filter(email=email).first()
 
         if user:
             if not user.is_verified:
-                # Send a new OTP for unverified user
                 otp = random.randint(100000, 999999)
                 user.otp = otp
-                user.otp_created_at = timezone.now()
+                user.otp_created_at = now()
                 user.save()
 
                 email_thread = EmailThread(
-                    subject='Account Verification OTP',
-                    message=f'Your OTP for account verification is {otp}.',
-                    recipient_list=[user.email],
+                    subject='Verify your email',
+                    message=f'Your OTP is: {otp}',
+                    recipient_list=[email],
                 )
                 email_thread.start()
 
-                return Response({"message": "User already exists but not verified. A new OTP has been sent."},
-                                status=status.HTTP_200_OK)
+                return Response({"message": "User already exists but is not verified. OTP resent."}, status=status.HTTP_200_OK)
             else:
-                return Response({'message': 'User already exists and is verified.'},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "User already exists and is verified."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create new user
-        new_user = User.objects.create(
-            first_name=data['first_name'],
-            last_name=data['last_name'],
+        otp = random.randint(100000, 999999)
+        user = User.objects.create(
+            first_name=serializer.validated_data['first_name'],
+            last_name=serializer.validated_data['last_name'],
             email=email,
-            password=make_password(data['password']),
-            is_verified=False
+            password=make_password(password),  # Using the password validated in the serializer
+            otp=otp,
+            otp_created_at=now()
         )
 
-        # Generate OTP
-        otp = random.randint(100000, 999999)
-        new_user.otp = otp
-        new_user.otp_created_at = timezone.now()
-        new_user.save()
-
-        # Send OTP email
         email_thread = EmailThread(
-            subject='Account Verification OTP',
-            message=f'Your OTP for account verification is {otp}.',
-            recipient_list=[new_user.email],
+            subject='Verify your email',
+            message=f'Your OTP is: {otp}',
+            recipient_list=[email],
         )
         email_thread.start()
 
-        return Response({"message": "User created successfully. An OTP has been sent to your email."},
-                        status=status.HTTP_201_CREATED)
+        return Response({"message": "Signup successful. OTP sent to your email."}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'], url_path='verify-otp')
     def verify_otp(self, request):
         """
-        Verify the OTP and activate the user account.
+        Verifies the OTP sent to the user's email.
         """
-        email = request.data.get('email')
-        otp = request.data.get('otp')
-
-        if not email or not otp:
-            return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = VerifyOtpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        otp = serializer.validated_data['otp']
 
         user = User.objects.filter(email=email).first()
-
         if not user:
-            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if str(user.otp) != str(otp):
-            return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
+        if user.is_verified:
+            return Response({"error": "User is already verified."}, status=status.HTTP_400_BAD_REQUEST)
 
-        otp_age = (timezone.now() - user.otp_created_at).total_seconds()
-        if otp_age > 300:  # OTP expires after 5 minutes
-            return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+        if str(user.otp) != otp:
+            return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if now() - user.otp_created_at > datetime.timedelta(minutes=5):
+            return Response({"error": "OTP has expired."}, status=status.HTTP_400_BAD_REQUEST)
 
         user.is_verified = True
         user.otp = None
-        user.otp_created_at = None
         user.save()
 
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-
-        return Response({
-            'message': 'Account verified successfully.',
-            'access_token': access_token,
-            'refresh_token': str(refresh),
-        }, status=status.HTTP_200_OK)
+        return Response({"message": "User verified successfully."}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], url_path='resend-otp')
     def resend_otp(self, request):
         """
-        Resend OTP to the user's email.
+        Resends the OTP to the user's email.
         """
-        email = request.data.get('email')
-
-        if not email:
-            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ResendOtpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
 
         user = User.objects.filter(email=email).first()
-
         if not user:
-            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         if user.is_verified:
-            return Response({"message": "User is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "User is already verified."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate a new OTP
         otp = random.randint(100000, 999999)
         user.otp = otp
-        user.otp_created_at = timezone.now()
+        user.otp_created_at = now()
         user.save()
 
-        # Send OTP email
         email_thread = EmailThread(
-            subject='Resent OTP for Account Verification',
-            message=f'Your new OTP for account verification is {otp}.',
-            recipient_list=[user.email],
+            subject='Resend OTP',
+            message=f'Your OTP is: {otp}',
+            recipient_list=[email],
         )
         email_thread.start()
 
-        return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
+        return Response({"message": "OTP resent to your email."}, status=status.HTTP_200_OK)
 
 
 class UserLoginViewSet(viewsets.ModelViewSet):
