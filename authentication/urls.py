@@ -1,14 +1,7 @@
-from django.urls import path, re_path, include
-from rest_framework.routers import DefaultRouter
-from .views import (UserSignupViewSet, UserLoginViewSet, SendOTPViewSet, CheckOTPViewSet,
-                    LogoutViewSet, UserProfileViewSet, PasswordChangeRequestViewSet, ForgotPasswordViewSet)
+from django.urls import path,
+from .views import (UserSignupViewSet, UserLoginViewSet, LogoutViewSet, UserProfileViewSet, PasswordChangeRequestViewSet, ForgotPasswordViewSet)
 from rest_framework_simplejwt.views import TokenRefreshView
 
-router = DefaultRouter()
-# router.register('profile', UserProfileViewSet, basename='userprofile')
-# router.register('password-change', PasswordChangeRequestViewSet, basename='passwordchange')
-# router.register('forgot-password', ForgotPasswordViewSet, basename='forgot-password')
-# router.register('signup', UserSignupViewSet, basename='signup')
 
 urlpatterns = [
     # path('', include(router.urls)),
@@ -16,8 +9,6 @@ urlpatterns = [
     path('signup/verify-otp/', UserSignupViewSet.as_view({'post': 'verify_otp'}), name='verify_otp'),
     path('signup/resend-otp/', UserSignupViewSet.as_view({'post': 'resend_otp'}), name='resend_otp'),
     path('login/', UserLoginViewSet.as_view({'post': 'create'}), name='UserLoginViewSet'),
-    path('forgot_password/', SendOTPViewSet.as_view({'post': 'create'}), name='forgot-password'),
-    path('check_otp/', CheckOTPViewSet.as_view({'post': 'create'}), name='check-otp'),
     path('logout/', LogoutViewSet.as_view({'post': 'logout'}), name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # forgot password urls
