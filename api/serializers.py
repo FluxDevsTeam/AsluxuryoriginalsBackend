@@ -7,7 +7,7 @@ import json
 class SubCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = SubCategory
-        fields = ['category', 'title', 'slug']
+        fields = ['category', 'title']
         extra_kwargs = {
             'category': {'write_only': True},
         }
@@ -16,7 +16,7 @@ class SubCategorySerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['title', 'slug']
+        fields = ['title']
 
 
 class GetProductSerializer(serializers.ModelSerializer):
@@ -25,7 +25,7 @@ class GetProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'slug', 'inventory',
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'inventory',
                   'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
         read_only_fields = ['id']
 
@@ -33,7 +33,7 @@ class GetProductSerializer(serializers.ModelSerializer):
         if obj.category:
             return {
                 "name": obj.category.title,
-                "slug": obj.category.slug
+                "id": obj.category.id
             }
         return None
 
@@ -42,7 +42,7 @@ class GetProductSerializer(serializers.ModelSerializer):
         if obj.subcategory:
             return {
                 "name": obj.subcategory.title,
-                "slug": obj.subcategory.slug
+                "id": obj.subcategory.id
             }
         return None
 
@@ -53,7 +53,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'slug', 'inventory',
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'inventory',
                   'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
         read_only_fields = ['id']
 
@@ -114,7 +114,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         return value
 
     def save(self, **kwargs):
-        cart_id = self.context['cart_id']
+        cart_id = self.context['cart_']
         product_id = self.validated_data['product_id']
         quantity = self.validated_data['quantity']
         user = self.context['request'].user
@@ -130,7 +130,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         self.validated_data['owner'] = user
 
         try:
-            cartitem = CartItems.objects.get(product_id=product_id, cart_id=cart_id)
+            cartitem = CartItems.objects.get(product_id=product_id, cart_slug=cart_slug)
 
             if cartitem.quantity + quantity > product.inventory:
                 raise serializers.ValidationError("The total quantity in your cart exceeds the available inventory.")
@@ -145,7 +145,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItems
-        fields = ['id', 'product_id', 'quantity', 'slug']
+        fields = ['id', 'product_id', 'quantity']
         read_only_fields = ['id']
 
 
@@ -172,7 +172,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity', 'slug', 'owner']
+        fields = ['id', 'product', 'quantity', 'owner']
         read_only_fields = ['id']
 
 
@@ -181,5 +181,5 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'placed_at', 'owner', 'items', 'slug']
+        fields = ['id', 'placed_at', 'owner', 'items']
         read_only_fields = ['id']
