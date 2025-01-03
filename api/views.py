@@ -34,7 +34,7 @@ def initiate_payment(amount, email, cart_id, user):
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        "redirect_url": "http:/127.0.0.1:8000/api/carts/confirm_payment/?c_id=" + cart_id,
+        "redirect_url": "https:/asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/?c_id=" + cart_id,
         "meta": {
             "consumer_id": user_id,
             "consumer_mac": "92a3-912ba-1192a"
@@ -63,10 +63,9 @@ class ApiProducts(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProductFilter
-    search_fields = ['name', 'description', 'color']
+    search_fields = ['name', 'description', 'colour', 'material']
     ordering_fields = ['price']
     pagination_class = PageNumberPagination
-    lookup_field = 'slug'
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -85,7 +84,6 @@ class ApiCart(viewsets.ModelViewSet):
     queryset = Cart.objects.all()
     serializer_class = CartSerializer
     permission_classes = [IsOwnerOrAdmin, IsAuthenticated]
-    lookup_field = 'slug'
 
     @action(detail=True, methods=['POST'])
     def pay(self, request, pk=None):
@@ -157,7 +155,6 @@ class ApiCart(viewsets.ModelViewSet):
 class ApiCartItem(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
     permission_classes = [IsOwnerOrAdmin, IsAuthenticated]
-    lookup_field = 'slug'
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -167,7 +164,7 @@ class ApiCartItem(viewsets.ModelViewSet):
         return CartItemSerializer
 
     def get_queryset(self):
-        return CartItems.objects.filter(cart_id=self.kwargs['cart_pk'], owner=self.request.user)
+        return CartItems.objects.filter(cart_slug=self.kwargs['cart_slug'], owner=self.request.user)
 
     def get_serializer_context(self):
         return {
@@ -182,7 +179,6 @@ class ApiCategory(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['title']
-    lookup_field = 'slug'
 
 
 class ApiCategory(viewsets.ModelViewSet):
@@ -191,7 +187,6 @@ class ApiCategory(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['title']
-    lookup_field = 'slug'
 
 
 class ApiSubCategory(viewsets.ModelViewSet):
@@ -200,13 +195,11 @@ class ApiSubCategory(viewsets.ModelViewSet):
     queryset = SubCategory.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['title']
-    lookup_field = 'slug'
 
 
 class ApiOrder(viewsets.ModelViewSet):
     http_method_names = ["get", "patch", "delete", "options", "head"]
     serializer_class = OrderSerializer
-    lookup_field = 'slug'
 
     def get_permissions(self):
         if self.request.method in ["PATCH", "DELETE"]:
