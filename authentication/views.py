@@ -68,7 +68,6 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         if not user:
             return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create or update the forgot password request
         ForgotPasswordRequest.objects.filter(user=user).delete()
         otp = random.randint(100000, 999999)
 
@@ -102,24 +101,20 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         if not forgot_password_request:
             return Response({"error": "No pending forgot password request found."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate OTP
         if str(forgot_password_request.otp) != str(otp):
             return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if OTP has expired
         otp_age = (timezone.now() - forgot_password_request.created_at).total_seconds()
-        if otp_age > 300:  # 5 minutes
+        if otp_age > 300:
             return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Update the user's password
         user.password = make_password(forgot_password_request.new_password)
         if not user.is_verified:
-            user.is_verified = True  # Mark user as verified
+            user.is_verified = True
         user.save()
 
         forgot_password_request.delete()
 
-        # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
@@ -150,7 +145,7 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         # Generate a new OTP
         otp = random.randint(100000, 999999)
         forgot_password_request.otp = otp
-        forgot_password_request.created_at = timezone.now()  # Reset timestamp
+        forgot_password_request.created_at = timezone.now()
         forgot_password_request.save()
 
         email_thread = EmailThread(
@@ -234,7 +229,6 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         if new_password != confirm_password:
             return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create or update the password change request
         PasswordChangeRequest.objects.filter(user=user).delete()
         otp = random.randint(100000, 999999)
 
@@ -256,16 +250,14 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         """
         user = request.user
 
-        # Check for an existing request
         password_change_request = PasswordChangeRequest.objects.filter(user=user).first()
 
         if not password_change_request:
             return Response({"error": "No pending password change request found."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate a new OTP
         otp = random.randint(100000, 999999)
         password_change_request.otp = otp
-        password_change_request.created_at = timezone.now()  # Reset timestamp to current timezone-aware time
+        password_change_request.created_at = timezone.now()
         password_change_request.save()
 
         email_thread = EmailThread(
@@ -293,27 +285,23 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         if not password_change_request:
             return Response({"error": "No pending password change request found."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate OTP
         if str(password_change_request.otp) != str(otp):
             return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if OTP has expired
-        otp_age = (timezone.now() - password_change_request.created_at).total_seconds()  # Use timezone-aware time
-        if otp_age > 300:  # 300 seconds = 5 minutes
+        otp_age = (timezone.now() - password_change_request.created_at).total_seconds()
+        if otp_age > 300:
             return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Update user's password
         user.password = make_password(password_change_request.new_password)
         user.save()
 
         password_change_request.delete()
 
-        # Invalidate refresh token if provided
         refresh_token = request.data.get('refresh_token')
         if refresh_token:
             try:
                 token = RefreshToken(refresh_token)
-                token.blacklist()  # Blacklist the refresh token
+                token.blacklist()
             except Exception as e:
                 raise AuthenticationFailed('Refresh token is invalid or expired.')
         return Response({"message": "Password changed successfully. You have been logged out."},
@@ -325,91 +313,136 @@ class UserSignupViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
-
+        """
+        Handle user signup and send OTP.
+        """
         if request.method != 'POST':
             return Response({'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
         data = request.data
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
+
         email = data['email']
-        if not User.objects.filter(email=email).exists():
-            User.objects.create(
-                first_name=data['first_name'],
-                last_name=data['last_name'],
-                email=email,
-                password=make_password(data['password'])
-            )
+        user = User.objects.filter(email=email).first()
 
-            user = get_object_or_404(User, email=email)
-            otp = str(random.randint(100000, 999999))
+        if user:
+            if not user.is_verified:
+                # Send a new OTP for unverified user
+                otp = random.randint(100000, 999999)
+                user.otp = otp
+                user.otp_created_at = timezone.now()
+                user.save()
 
-            payload = {
-                'user_id': user.id,
-                'email': user.email,
-                'otp': otp,
-                'exp': datetime.datetime.now() + datetime.timedelta(minutes=5)
-            }
-            token = create_token(payload)
+                email_thread = EmailThread(
+                    subject='Account Verification OTP',
+                    message=f'Your OTP for account verification is {otp}.',
+                    recipient_list=[user.email],
+                )
+                email_thread.start()
 
-            email_thread = EmailThread(
-                subject='OTP for signup',
-                message=f'Your OTP is {otp}',
-                recipient_list=[user.email],
-            )
-            email_thread.start()
-
-            return Response({
-                'token': token
-            }, status=status.HTTP_200_OK)
-
-        else:
-            return Response({'message': 'User Already Exists'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class CheckSignupOTPViewSet(viewsets.ModelViewSet):
-    """
-    Viewset for OTP validation and token generation.
-    """
-    serializer_class = CheckSignupOTPSerializer
-
-    # permission_classes = [IsAuthenticated]  # You can adjust permissions as needed
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        otp = serializer.validated_data['otp']
-        enc_token = serializer.validated_data['token']
-        data = decrypt_token(enc_token)
-
-        if data['status']:
-            otp_real = data['payload']['otp']
-            if int(otp) == int(otp_real):
-                email = data['payload']['email']
-                user = User.objects.get(email=email)
-                # Generate tokens
-                refresh = RefreshToken.for_user(user)
-                access_token = str(refresh.access_token)
-                if not user.is_verified:
-                    user.is_verified = True
-                    user.save()
-
-                    return Response({
-                        'access_token': access_token,
-                        'refresh_token': str(refresh),
-                    }, status=status.HTTP_201_CREATED)
-                else:
-                    return Response({
-                        'message': 'cant verify signup more than once...'
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": "User already exists but not verified. A new OTP has been sent."},
+                                status=status.HTTP_200_OK)
             else:
-                return Response({
-                    'message': 'OTP didn\'t match...',
-                }, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({
-                'message': 'OTP expired. Try again!',
-                'status': False,
-            }, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'message': 'User already exists and is verified.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        # Create new user
+        new_user = User.objects.create(
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            email=email,
+            password=make_password(data['password']),
+            is_verified=False
+        )
+
+        # Generate OTP
+        otp = random.randint(100000, 999999)
+        new_user.otp = otp
+        new_user.otp_created_at = timezone.now()
+        new_user.save()
+
+        # Send OTP email
+        email_thread = EmailThread(
+            subject='Account Verification OTP',
+            message=f'Your OTP for account verification is {otp}.',
+            recipient_list=[new_user.email],
+        )
+        email_thread.start()
+
+        return Response({"message": "User created successfully. An OTP has been sent to your email."},
+                        status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='verify-otp')
+    def verify_otp(self, request):
+        """
+        Verify the OTP and activate the user account.
+        """
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+
+        if not email or not otp:
+            return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+
+        if not user:
+            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if str(user.otp) != str(otp):
+            return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp_age = (timezone.now() - user.otp_created_at).total_seconds()
+        if otp_age > 300:  # OTP expires after 5 minutes
+            return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.is_verified = True
+        user.otp = None
+        user.otp_created_at = None
+        user.save()
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        return Response({
+            'message': 'Account verified successfully.',
+            'access_token': access_token,
+            'refresh_token': str(refresh),
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='resend-otp')
+    def resend_otp(self, request):
+        """
+        Resend OTP to the user's email.
+        """
+        email = request.data.get('email')
+
+        if not email:
+            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+
+        if not user:
+            return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.is_verified:
+            return Response({"message": "User is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate a new OTP
+        otp = random.randint(100000, 999999)
+        user.otp = otp
+        user.otp_created_at = timezone.now()
+        user.save()
+
+        # Send OTP email
+        email_thread = EmailThread(
+            subject='Resent OTP for Account Verification',
+            message=f'Your new OTP for account verification is {otp}.',
+            recipient_list=[user.email],
+        )
+        email_thread.start()
+
+        return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
 
 class UserLoginViewSet(viewsets.ModelViewSet):
