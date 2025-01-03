@@ -1,6 +1,5 @@
-from rest_framework import serializers
 from customuser.models import User
-from .models import ForgotPasswordRequest
+from rest_framework import serializers
 
 
 class ForgotPasswordRequestSerializer(serializers.Serializer):
@@ -16,10 +15,10 @@ class ForgotPasswordRequestSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'first_name', 'last_name', 'email']
-        read_only_fields = ['id', 'email']
+    otp = serializers.CharField(max_length=6, required=True)
+    new_email = serializers.CharField(write_only=True, required=True, min_length=8)
+    new_first_name = serializers.CharField(write_only=True, required=True, min_length=8)
+    new_last_name = serializers.CharField(write_only=True, required=True, min_length=8)
 
 
 class PasswordChangeRequestSerializer(serializers.Serializer):
@@ -33,20 +32,21 @@ class PasswordChangeRequestSerializer(serializers.Serializer):
         return attrs
 
 
-class UserSignupSerializer(serializers.ModelSerializer):
-    # tokens = serializers.SerializerMethodField()
-    class Meta:
-        model = User
-        fields = ['first_name', 'last_name', 'email', 'password', 'phone_number']
-        read_only_fields = ['id', ]
+class UserSignupSerializer(serializers.Serializer):
+    otp = serializers.CharField(max_length=6, required=True)
+    first_name = serializers.CharField(max_length=100)
+    last_name = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    verify_password = serializers.CharField(write_only=True, min_length=8)
 
-    extra_kwargs = {
-        'first_name': {'required': True, 'allow_blank': False},
-        'last_name': {'required': True, 'allow_blank': False},
-        'email': {'required': True, 'allow_blank': False},
-        'password': {'required': True, 'allow_blank': False},
-        'phone_number': {'required': True, 'allow_blank': False},
-    }
+    def validate(self, data):
+        """
+        Ensure the password and verify_password fields match.
+        """
+        if data['password'] != data['verify_password']:
+            raise serializers.ValidationError("Passwords do not match.")
+        return data
 
 
 class EmailVerificationSerializer(serializers.ModelSerializer):
