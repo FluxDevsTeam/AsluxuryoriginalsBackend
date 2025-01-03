@@ -19,15 +19,3 @@ class EmailThread(threading.Thread):
             settings.EMAIL_HOST_USER,
             self.recipient_list,
         )
-
-
-def send_otp_to_email(email):
-    otp = random.randint(100000, 999999)
-    send_mail(
-        subject="Your OTP Code",
-        message=f"Use this OTP to verify your email: {otp}",
-        from_email="no-reply@example.com",  # Replace with your email address
-        recipient_list=[email],
-        fail_silently=False,
-    )
-    return str(otp)  # Ensure OTP is returned as a string
