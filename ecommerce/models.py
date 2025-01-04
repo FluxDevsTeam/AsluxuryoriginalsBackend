@@ -27,7 +27,7 @@ def generate_order_item_slug(instance):
 
 class Category(models.Model):
     title = models.CharField(max_length=200)
-    slug = AutoSlugField(populate_from='title', unique=True, db_index=True)
+    slug = AutoSlugField(populate_from='title', db_index=True)
 
     def __str__(self):
         return self.title
@@ -36,7 +36,7 @@ class Category(models.Model):
 class SubCategory(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="items")
     title = models.CharField(max_length=200)
-    slug = AutoSlugField(populate_from='title', unique=True, db_index=True)
+    slug = AutoSlugField(populate_from='title', db_index=True)
 
     def __str__(self):
         return self.title
@@ -54,7 +54,7 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='products')
     subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, blank=True, null=True,
                                     related_name='products_subcategory')
-    slug = AutoSlugField(populate_from='name', unique=True, db_index=True)
+    slug = AutoSlugField(populate_from='name', db_index=True)
     inventory = models.IntegerField(default=5)
     top_deal = models.BooleanField(default=False)
     image1 = models.ImageField(upload_to='products/images/', blank=True, null=True)
@@ -67,6 +67,7 @@ class Product(models.Model):
 
 class Cart(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -74,7 +75,7 @@ class Cart(models.Model):
     )
     created = models.DateTimeField(auto_now_add=True)
     slug = AutoSlugField(
-        populate_from=generate_cart_slug, unique=True, db_index=True
+        populate_from=generate_cart_slug, db_index=True
     )
 
     def __str__(self):
@@ -92,7 +93,7 @@ class CartItems(models.Model):
     quantity = models.PositiveSmallIntegerField(default=0)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="cart_items")
     slug = AutoSlugField(
-        populate_from=generate_cart_item_slug, unique=True, db_index=True
+        populate_from=generate_cart_item_slug, db_index=True
     )
 
     def __str__(self):
@@ -104,7 +105,8 @@ class Order(models.Model):
     placed_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="order_history")
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    slug = AutoSlugField(populate_from=generate_order_slug, unique=True, db_index=True)
+    address = models.CharField(max_length=200)
+    slug = AutoSlugField(populate_from=generate_order_slug, db_index=True)
 
     def calculate_total_price(self):
         self.total_price = sum(item.quantity * item.price for item in self.items.all())
@@ -126,7 +128,7 @@ class OrderItem(models.Model):
     quantity = models.PositiveSmallIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     slug = AutoSlugField(
-        populate_from=generate_order_item_slug, unique=True, db_index=True
+        populate_from=generate_order_item_slug, db_index=True
     )
 
     def save(self, *args, **kwargs):
