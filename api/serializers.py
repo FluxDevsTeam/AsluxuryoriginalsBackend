@@ -1,7 +1,5 @@
 from rest_framework import serializers
 from ecommerce.models import *
-from django.db import transaction
-import json
 
 
 class SubCategorySerializer(serializers.ModelSerializer):
@@ -114,7 +112,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         return value
 
     def save(self, **kwargs):
-        cart_id = self.context['cart_']
+        cart_id = self.context['cart_id']
         product_id = self.validated_data['product_id']
         quantity = self.validated_data['quantity']
         user = self.context['request'].user
@@ -181,5 +179,14 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'placed_at', 'owner', 'items']
+        fields = ['id', 'address',  'placed_at', 'owner', 'items', 'total_price']
         read_only_fields = ['id']
+
+
+class DashboardOrderSerializer(serializers.ModelSerializer):
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        model = Order
+        fields = ['id', 'placed_at', 'owner', 'total_price']
+        read_only_fields = ['id', 'total_price']
