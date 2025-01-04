@@ -50,8 +50,9 @@ class User(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
     is_verified = models.BooleanField(default=False)
-    phone_number = models.CharField(max_length=15, blank=True, null=True)  # New field
-
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    otp = models.IntegerField(null=True)
+    otp_created_at = models.DateTimeField(auto_now_add=True)
     USERNAME_FIELD = 'email'  # Use email as the unique identifier
     REQUIRED_FIELDS = []  # No additional required fields
 
