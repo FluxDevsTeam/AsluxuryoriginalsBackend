@@ -33,20 +33,27 @@ class PasswordChangeRequestSerializer(serializers.Serializer):
 
 
 class UserSignupSerializer(serializers.Serializer):
-    otp = serializers.CharField(max_length=6, required=True)
-    first_name = serializers.CharField(max_length=100)
-    last_name = serializers.CharField(max_length=100)
+    first_name = serializers.CharField(max_length=100, required=False)
+    last_name = serializers.CharField(max_length=100, required=False)
+    phone_number = serializers.CharField(max_length=15, required=False)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
     verify_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, data):
-        """
-        Ensure the password and verify_password fields match.
-        """
+
         if data['password'] != data['verify_password']:
             raise serializers.ValidationError("Passwords do not match.")
         return data
+
+
+class UserSignupSerializerOTP(serializers.Serializer):
+    otp = serializers.CharField(max_length=6)
+    email = serializers.EmailField()
+
+
+class UserSignupSerializerResendOTP(serializers.Serializer):
+    email = serializers.EmailField()
 
 
 class EmailVerificationSerializer(serializers.ModelSerializer):
