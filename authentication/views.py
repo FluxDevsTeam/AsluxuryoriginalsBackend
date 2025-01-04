@@ -7,7 +7,8 @@ from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import AuthenticationFailed
 from customuser.models import User
 from .serializers import (UserSignupSerializer, LoginSerializer, PasswordChangeRequestSerializer, \
-                          UserProfileSerializer, ForgotPasswordRequestSerializer)
+                          UserProfileSerializer, ForgotPasswordRequestSerializer, UserSignupSerializerResendOTP,
+                          UserSignupSerializerOTP)
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .utils import EmailThread
 from rest_framework.permissions import IsAuthenticated
@@ -456,18 +457,16 @@ class UserSignupViewSet(viewsets.ViewSet):
     Viewset for handling user signup and OTP verification.
     """
 
-    serializer_class = UserSignupSerializer
-
     def create(self, request, *args, **kwargs):
         """
         Handles user signup.
         """
-        serializer = self.serializer_class(data=request.data)
+        serializer = UserSignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
-
+        phone_number = serializer.validated_data['phone_number']
         # Check if the user already exists
         user = User.objects.filter(email=email).first()
 
@@ -485,18 +484,19 @@ class UserSignupViewSet(viewsets.ViewSet):
                 )
                 email_thread.start()
 
-                return Response({"message": "User already exists but is not verified. OTP resent."},
+                return Response({"message": f"User already exists but is not verified. OTP resent."},
                                 status=status.HTTP_200_OK)
             else:
                 return Response({"error": "User already exists and is verified."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create new user
         otp = random.randint(100000, 999999)
-        user = User.objects.create(
+        User.objects.create(
             first_name=serializer.validated_data['first_name'],
             last_name=serializer.validated_data['last_name'],
             email=email,
             password=make_password(password),
+            phone_number=phone_number,
             otp=otp,
             otp_created_at=now()
         )
@@ -508,14 +508,14 @@ class UserSignupViewSet(viewsets.ViewSet):
         )
         email_thread.start()
 
-        return Response({"message": "Signup successful. OTP sent to your email."}, status=status.HTTP_201_CREATED)
+        return Response({"message": f"Signup successful. OTP sent to your email "}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'], url_path='verify-otp')
     def verify_otp(self, request):
         """
         Verifies the OTP sent to the user's email.
         """
-        serializer = self.serializer_class(data=request.data)
+        serializer = UserSignupSerializerOTP(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
         otp = serializer.validated_data['otp']
@@ -537,14 +537,20 @@ class UserSignupViewSet(viewsets.ViewSet):
         user.otp = None
         user.save()
 
-        return Response({"message": "User verified successfully."}, status=status.HTTP_200_OK)
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        return Response({
+            'access_token': access_token,
+            'refresh_token': str(refresh),
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], url_path='resend-otp')
     def resend_otp(self, request):
         """
         Resends the OTP to the user's email.
         """
-        serializer = self.serializer_class(data=request.data)
+        serializer = UserSignupSerializerResendOTP(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
 
@@ -567,7 +573,7 @@ class UserSignupViewSet(viewsets.ViewSet):
         )
         email_thread.start()
 
-        return Response({"message": "OTP resent to your email."}, status=status.HTTP_200_OK)
+        return Response({"message": f"OTP resent to your email."}, status=status.HTTP_200_OK)
 
 
 class UserLoginViewSet(viewsets.ViewSet):
