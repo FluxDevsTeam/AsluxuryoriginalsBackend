@@ -8,7 +8,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from customuser.models import User
 from .serializers import (UserSignupSerializer, LoginSerializer, PasswordChangeRequestSerializer, \
                           UserProfileSerializer, ForgotPasswordRequestSerializer, UserSignupSerializerResendOTP,
-                          UserSignupSerializerOTP)
+                          UserSignupSerializerOTP, ViewUserProfileSerializer)
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .utils import EmailThread
 from rest_framework.permissions import IsAuthenticated
@@ -97,7 +97,6 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
 
         otp_age = (timezone.now() - forgot_password_request.created_at).total_seconds()
         if otp_age > 300:
-            forgot_password_request.delete()
             return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
 
         user.password = make_password(forgot_password_request.new_password)
@@ -147,11 +146,19 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for retrieving and updating the user's profile.
+    """
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return User.objects.filter(id=self.request.user.id)
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Returns the profile of the currently authenticated user.
+        """
+        user = request.user
+        serializer = ViewUserProfileSerializer(user)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='request-email-change')
     def request_email_change(self, request):
@@ -537,10 +544,17 @@ class UserSignupViewSet(viewsets.ViewSet):
         user.otp = None
         user.save()
 
+        email_thread = EmailThread(
+            subject='signup successful',
+            message=f'You have finished the signup verification for ASLuxeryOriginals.com. Welcome!',
+            recipient_list=[email],
+        )
+        email_thread.start()
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
         return Response({
+            'message': 'signup successful.',
             'access_token': access_token,
             'refresh_token': str(refresh),
         }, status=status.HTTP_200_OK)
@@ -615,6 +629,7 @@ class UserLoginViewSet(viewsets.ViewSet):
         email_thread.start()
 
         return Response({
+            'message': 'Login successful.',
             'access_token': access_token,
             'refresh_token': str(refresh),
         }, status=status.HTTP_200_OK)
