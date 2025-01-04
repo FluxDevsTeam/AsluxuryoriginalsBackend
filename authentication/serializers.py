@@ -21,6 +21,12 @@ class UserProfileSerializer(serializers.Serializer):
     new_last_name = serializers.CharField(write_only=True, required=True, min_length=8)
 
 
+class ViewUserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email']
+
+
 class PasswordChangeRequestSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6, required=True)
     new_password = serializers.CharField(write_only=True, required=True, min_length=8)
