@@ -36,7 +36,7 @@ def initiate_payment(amount, email, cart_id, user):
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        "redirect_url": "http:/127.0.0.1:8000/api/carts/confirm_payment/?c_id=" + cart_id,
+        "redirect_url": "https:/asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/?c_id=" + cart_id,
         "meta": {
             "consumer_id": user_id,
             "consumer_mac": "92a3-912ba-1192a"
@@ -145,7 +145,7 @@ class ApiCart(viewsets.ModelViewSet):
             order.save()
             email_thread = EmailThread(
                 subject='new order',
-                message=f'user {request.user.email}  made an order of total amount of ₦{amount}, order id is {order.id}. link to order http://127.0.0.1:8000/api/orders/{order.id}',
+                message=f'user {request.user.email}  made an order of total amount of ₦{amount}, order id is {order.id}. link to order https://asluxeryoriginals.pythonanywhere.com/api/orders/{order.id}',
                 recipient_list=["suskidee@gmail.com"],
             )
             email_thread.start()
@@ -203,6 +203,9 @@ class ApiSubCategory(viewsets.ModelViewSet):
 class ApiOrder(viewsets.ModelViewSet):
     http_method_names = ["get", "patch", "delete", "options", "head"]
     serializer_class = OrderSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['id']
+    search_fields = ['id']
 
     def get_permissions(self):
         if self.request.method in ["PATCH", "DELETE"]:
@@ -219,6 +222,7 @@ class ApiOrder(viewsets.ModelViewSet):
 class DashboardOrderViewSet(ViewSet):
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['id']
 
     def list(self, request):
         """
