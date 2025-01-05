@@ -34,9 +34,10 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
             return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
 
         reset_url = f"https://asluxeryoriginals.pythonanywhere.com/auth/forgot-password/set-new-password/?email={email}"
+        ForgotPasswordRequest.objects.create(user=user)
         send_mail(
             subject='Password Reset Request',
-            message=f"Click the following link to reset your password: {reset_url}. This link will expire in 5 minutes.",
+            message=f"Click the following link to reset your password: {reset_url}. This link will expire in 10 minutes.",
             recipient_list=[email],
             from_email=settings.EMAIL_HOST_USER,
         )
@@ -63,6 +64,10 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         user = User.objects.filter(email=email).first()
         if not user:
             return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
+        forgot_password_request = ForgotPasswordRequest.objects.filter(user=user).first()
+        expiration_time = forgot_password_request.created_at + datetime.timedelta(minutes=10)
+        if timezone.now() > expiration_time:
+            return Response({"error": "The reset link has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
 
         ForgotPasswordRequest.objects.filter(user=user).delete()
         otp = random.randint(100000, 999999)
@@ -132,11 +137,17 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         if not forgot_password_request:
             return Response({"error": "No pending forgot password request found."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Generate a new OTP
         otp = random.randint(100000, 999999)
         forgot_password_request.otp = otp
-        forgot_password_request.created_at = timezone.now()
+
+        # Extend the expiration time by 5 minutes from now
+        forgot_password_request.created_at = timezone.now()  # Reset the creation time to current time
+
+        # Save the updated OTP and expiration time
         forgot_password_request.save()
 
+        # Send the new OTP to the user
         send_mail(
             subject='Forgot Password OTP - Resent',
             message=f"Your new OTP for password reset is: {otp}. It will expire in 5 minutes.",
@@ -144,7 +155,7 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
             from_email=settings.EMAIL_HOST_USER,
         )
 
-        return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
+        return Response({"message": "A new OTP has been sent to your email and the expiration time has been extended."}, status=status.HTTP_200_OK)
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -183,8 +194,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         # Optional: Check if there is an existing pending request and reuse it
         existing_request = EmailChangeRequest.objects.filter(user=user).first()
         if existing_request:
+            otp = random.randint(100000, 999999)
             existing_request.new_email = new_email
-            existing_request.otp = random.randint(100000, 999999)
+            existing_request.otp = otp
             existing_request.created_at = timezone.now()
             existing_request.save()
         else:
@@ -271,7 +283,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='request-name-change')
     def request_name_change(self, request):
         """
-        Request name change with OTP sent to email.
+        Request name change , just submitting the request with new name details.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -284,53 +296,39 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return Response({"error": "At least one of new_first_name or new_last_name is required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Optional: Check if there is an existing pending request for name change
-        if NameChangeRequest.objects.filter(user=user).exists():
-            return Response({"error": "You already have a pending name change request."},
-                            status=status.HTTP_400_BAD_REQUEST)
+        # Clear any existing pending name change requests
+        NameChangeRequest.objects.filter(user=user).delete()
 
-        otp = random.randint(100000, 999999)
+        # Create a new name change request
         NameChangeRequest.objects.create(
             user=user,
             new_first_name=new_first_name,
             new_last_name=new_last_name,
-            otp=otp,
         )
 
-        # Send OTP email
-        send_mail(
-            subject='Name Change OTP',
-            message=f"Your OTP for name change is: {otp}",
-            recipient_list=[user.email],
-            from_email=settings.EMAIL_HOST_USER,
-        )
-
-        return Response({"message": "OTP sent to your email address."}, status=status.HTTP_200_OK)
+        return Response({"message": "Name change request submitted successfully."}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], url_path='verify-name-change')
     def verify_name_change(self, request):
         """
-        Verify OTP and update the user's name.
+        Verify password and update the user's name.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         user = request.user
-        otp = serializer.validated_data.get('otp')
+        password = serializer.validated_data.get('password')
 
+        # Verify the password provided by the user
+        if not user.check_password(password):
+            return Response({"error": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch the latest name change request
         name_change_request = NameChangeRequest.objects.filter(user=user).first()
         if not name_change_request:
             return Response({"error": "No pending name change request found."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if OTP matches
-        if str(name_change_request.otp) != str(otp):
-            return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if OTP has expired (5 minutes validity)
-        otp_age = (timezone.now() - name_change_request.created_at).total_seconds()
-        if otp_age > 300:
-            return Response({"error": "OTP has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
-
+        # Update the user's name if the request exists
         if name_change_request.new_first_name:
             user.first_name = name_change_request.new_first_name
         if name_change_request.new_last_name:
@@ -339,7 +337,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         user.save()
         name_change_request.delete()
 
-        # Send confirmation email
         send_mail(
             subject='Name Change Confirmation',
             message="Your name has been successfully changed.",
@@ -364,9 +361,23 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         Request a password change with OTP verification sent to email.
         """
         user = request.user
+        old_password = request.data.get('old_password')
         new_password = request.data.get('new_password')
         confirm_password = request.data.get('confirm_password')
 
+        # Check if old password is provided and matches
+        if not old_password:
+            return Response({"error": "Old password is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.check_password(old_password):
+            return Response({"error": "Old password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ensure old and new passwords are not the same
+        if old_password == new_password:
+            return Response({"error": "New password cannot be the same as the old password."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate new password and confirmation
         if not new_password or not confirm_password:
             return Response({"error": "Both new_password and confirm_password are required."},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -374,7 +385,6 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         if new_password != confirm_password:
             return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Optional: Password strength validation can be added here
         if len(new_password) < 8:
             return Response({"error": "Password must be at least 8 characters long."},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -457,7 +467,7 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
                 raise AuthenticationFailed('Refresh token is invalid or expired.')
         send_mail(
             subject='Password changed successfully',
-            message=f'Password changed successfully. You have been logged out. Login with your new password',
+            message=f'Password changed successfully and  you have been logged out. \n Login with your new password',
             recipient_list=[request.user.email],
             from_email=settings.EMAIL_HOST_USER,
         )
