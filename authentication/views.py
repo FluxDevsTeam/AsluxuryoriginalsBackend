@@ -156,10 +156,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Returns the profile of the currently authenticated user.
+        Returns the profile of the currently authenticated user along with their orders.
         """
         user = request.user
-        serializer = ViewUserProfileSerializer(user)
+        serializer = ViewUserProfileSerializer(user, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='request-email-change')
