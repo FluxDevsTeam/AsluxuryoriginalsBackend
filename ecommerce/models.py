@@ -106,6 +106,7 @@ class Order(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="order_history")
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     address = models.CharField(max_length=200)
+    delivered = models.BooleanField(default=False)
     slug = AutoSlugField(populate_from=generate_order_slug, db_index=True)
 
     def calculate_total_price(self):
