@@ -33,13 +33,13 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         if not user:
             return Response({"error": "No user found with this email."}, status=status.HTTP_400_BAD_REQUEST)
 
-        reset_url = f"http://127.0.0.1:8000/auth/forgot-password/set-new-password/?email={email}"
-        email_thread = EmailThread(
+        reset_url = f"https://asluxeryoriginals.pythonanywhere.com/auth/forgot-password/set-new-password/?email={email}"
+        send_mail(
             subject='Password Reset Request',
             message=f"Click the following link to reset your password: {reset_url}. This link will expire in 5 minutes.",
             recipient_list=[email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         return Response({"message": "A password reset link has been sent to your email."}, status=status.HTTP_200_OK)
 
@@ -67,12 +67,12 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         ForgotPasswordRequest.objects.filter(user=user).delete()
         otp = random.randint(100000, 999999)
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Forgot Password OTP',
             message=f"Your OTP for password reset is: {otp}. It will expire in 5 minutes.",
             recipient_list=[email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         ForgotPasswordRequest.objects.create(user=user, otp=otp, new_password=new_password)
 
@@ -137,12 +137,12 @@ class ForgotPasswordViewSet(viewsets.ModelViewSet):
         forgot_password_request.created_at = timezone.now()
         forgot_password_request.save()
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Forgot Password OTP - Resent',
             message=f"Your new OTP for password reset is: {otp}. It will expire in 5 minutes.",
             recipient_list=[email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
@@ -191,12 +191,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             otp = random.randint(100000, 999999)
             EmailChangeRequest.objects.create(user=user, new_email=new_email, otp=otp)
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Email Change OTP',
             message=f"Your OTP is: {otp}",
             recipient_list=[new_email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         return Response({"message": "OTP sent to the new email address."}, status=status.HTTP_200_OK)
 
@@ -221,12 +221,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         email_change_request.created_at = timezone.now()
         email_change_request.save()
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Resend Email Change OTP',
             message=f"Your new OTP is: {otp}",
             recipient_list=[email_change_request.new_email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         return Response({"message": "New OTP sent to the new email address."}, status=status.HTTP_200_OK)
 
@@ -259,12 +259,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         email_change_request.delete()
 
         # Send confirmation email
-        email_thread = EmailThread(
+        send_mail(
             subject='Email Change Confirmation',
             message="Your email address has been successfully changed.",
             recipient_list=[user.email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         return Response({"message": "Email updated successfully."}, status=status.HTTP_200_OK)
 
@@ -298,12 +298,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         )
 
         # Send OTP email
-        email_thread = EmailThread(
+        send_mail(
             subject='Name Change OTP',
             message=f"Your OTP for name change is: {otp}",
             recipient_list=[user.email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         return Response({"message": "OTP sent to your email address."}, status=status.HTTP_200_OK)
 
@@ -340,12 +340,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         name_change_request.delete()
 
         # Send confirmation email
-        email_thread = EmailThread(
+        send_mail(
             subject='Name Change Confirmation',
             message="Your name has been successfully changed.",
             recipient_list=[user.email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
 
         return Response({"message": "Name updated successfully."}, status=status.HTTP_200_OK)
 
@@ -383,13 +383,12 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         PasswordChangeRequest.objects.filter(user=user).delete()
         otp = random.randint(100000, 999999)
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Password Change OTP',
             message=f"Your OTP for password change is: {otp}",
             recipient_list=[user.email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
-
         PasswordChangeRequest.objects.create(user=user, otp=otp, new_password=new_password)
 
         return Response({"message": "An OTP has been sent to your email."}, status=status.HTTP_200_OK)
@@ -411,13 +410,12 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
         password_change_request.created_at = timezone.now()
         password_change_request.save()
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Password Change OTP - Resent',
             message=f"Your new OTP for password change is: {otp}",
             recipient_list=[user.email],
+            from_email=settings.EMAIL_HOST_USER,
         )
-        email_thread.start()
-
         return Response({"message": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], url_path='verify-password-change')
@@ -457,6 +455,12 @@ class PasswordChangeRequestViewSet(viewsets.ModelViewSet):
                 token.blacklist()
             except Exception as e:
                 raise AuthenticationFailed('Refresh token is invalid or expired.')
+        send_mail(
+            subject='Password changed successfully',
+            message=f'Password changed successfully. You have been logged out. Login with your new password',
+            recipient_list=[request.user.email],
+            from_email=settings.EMAIL_HOST_USER,
+        )
         return Response({"message": "Password changed successfully. You have been logged out."},
                         status=status.HTTP_200_OK)
 
@@ -491,7 +495,7 @@ class UserSignupViewSet(viewsets.ViewSet):
                     subject='Verify your email',
                     message=f'Your OTP is: {otp}',
                     recipient_list=[email],
-                    from_email='no-reply@example.com',
+                    from_email=settings.EMAIL_HOST_USER,
                 )
 
                 return Response({"message": f"User already exists but is not verified. OTP resent."},
@@ -515,7 +519,7 @@ class UserSignupViewSet(viewsets.ViewSet):
             subject='Verify your email',
             message=f'Your OTP is: {otp}',
             recipient_list=[email],
-            from_email='no-reply@example.com',
+            from_email=settings.EMAIL_HOST_USER,
         )
 
         return Response({"message": f"Signup successful. OTP sent to your email "}, status=status.HTTP_201_CREATED)
@@ -551,7 +555,7 @@ class UserSignupViewSet(viewsets.ViewSet):
             subject='Signup successful',
             message=f'You have finished the signup verification for ASLuxeryOriginals.com. Welcome!',
             recipient_list=[email],
-            from_email='no-reply@example.com',
+            from_email=settings.EMAIL_HOST_USER,
         )
 
         refresh = RefreshToken.for_user(user)
@@ -588,7 +592,7 @@ class UserSignupViewSet(viewsets.ViewSet):
             subject='Resend OTP',
             message=f'Your OTP is: {otp}',
             recipient_list=[email],
-            from_email='no-reply@example.com',
+            from_email=settings.EMAIL_HOST_USER,
         )
 
         return Response({"message": f"OTP resent to your email."}, status=status.HTTP_200_OK)
@@ -629,7 +633,7 @@ class UserLoginViewSet(viewsets.ViewSet):
             subject='Login Successful',
             message=f'Your login to ASLuxeryOriginals.com was successful.',
             recipient_list=[email],
-            from_email=settings.EMAIL_HOST_USER,,
+            from_email=settings.EMAIL_HOST_USER,
         )
 
         return Response({
