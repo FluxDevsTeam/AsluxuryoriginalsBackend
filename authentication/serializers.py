@@ -1,5 +1,6 @@
 from customuser.models import User
 from rest_framework import serializers
+from api.serializers import OrderSerializer
 
 
 class ForgotPasswordRequestSerializer(serializers.Serializer):
@@ -22,9 +23,11 @@ class UserProfileSerializer(serializers.Serializer):
 
 
 class ViewUserProfileSerializer(serializers.ModelSerializer):
+    order_history = OrderSerializer(many=True, read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone_number']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone_number', 'order_history']
 
 
 class PasswordChangeRequestSerializer(serializers.Serializer):
