@@ -6,7 +6,7 @@ class NameChangeRequest(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="name_change_request")
     new_first_name = models.CharField(max_length=150, null=True, blank=True)
     new_last_name = models.CharField(max_length=150, null=True, blank=True)
-    otp = models.IntegerField()
+    otp = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -25,8 +25,8 @@ class EmailChangeRequest(models.Model):
 
 class ForgotPasswordRequest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    otp = models.IntegerField()
-    new_password = models.CharField(max_length=128)
+    otp = models.IntegerField(null=True, blank=True)
+    new_password = models.CharField(max_length=128, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
