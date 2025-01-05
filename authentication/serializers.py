@@ -16,10 +16,11 @@ class ForgotPasswordRequestSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.Serializer):
-    otp = serializers.CharField(max_length=6, required=True)
-    new_email = serializers.CharField(write_only=True, required=True, min_length=8)
-    new_first_name = serializers.CharField(write_only=True, required=True, min_length=8)
-    new_last_name = serializers.CharField(write_only=True, required=True, min_length=8)
+    otp = serializers.CharField(max_length=6, required=False)
+    new_email = serializers.CharField(write_only=True, required=False, min_length=8)
+    new_first_name = serializers.CharField(write_only=True, required=False, min_length=2)
+    new_last_name = serializers.CharField(write_only=True, required=False, min_length=2)
+    password = serializers.CharField(write_only=True, required=False)
 
 
 class ViewUserProfileSerializer(serializers.ModelSerializer):
@@ -32,6 +33,8 @@ class ViewUserProfileSerializer(serializers.ModelSerializer):
 
 class PasswordChangeRequestSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6, required=True)
+    old_password = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True)
     new_password = serializers.CharField(write_only=True, required=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True, required=True, min_length=8)
 
