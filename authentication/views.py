@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.core.mail import send_mail
 import random
 import datetime
 from django.utils import timezone
@@ -474,6 +476,7 @@ class UserSignupViewSet(viewsets.ViewSet):
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
         phone_number = serializer.validated_data['phone_number']
+
         # Check if the user already exists
         user = User.objects.filter(email=email).first()
 
@@ -484,12 +487,12 @@ class UserSignupViewSet(viewsets.ViewSet):
                 user.otp_created_at = now()
                 user.save()
 
-                email_thread = EmailThread(
+                send_mail(
                     subject='Verify your email',
                     message=f'Your OTP is: {otp}',
                     recipient_list=[email],
+                    from_email='no-reply@example.com',
                 )
-                email_thread.start()
 
                 return Response({"message": f"User already exists but is not verified. OTP resent."},
                                 status=status.HTTP_200_OK)
@@ -508,12 +511,12 @@ class UserSignupViewSet(viewsets.ViewSet):
             otp_created_at=now()
         )
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Verify your email',
             message=f'Your OTP is: {otp}',
             recipient_list=[email],
+            from_email='no-reply@example.com',
         )
-        email_thread.start()
 
         return Response({"message": f"Signup successful. OTP sent to your email "}, status=status.HTTP_201_CREATED)
 
@@ -544,17 +547,18 @@ class UserSignupViewSet(viewsets.ViewSet):
         user.otp = None
         user.save()
 
-        email_thread = EmailThread(
-            subject='signup successful',
+        send_mail(
+            subject='Signup successful',
             message=f'You have finished the signup verification for ASLuxeryOriginals.com. Welcome!',
             recipient_list=[email],
+            from_email='no-reply@example.com',
         )
-        email_thread.start()
+
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
         return Response({
-            'message': 'signup successful.',
+            'message': 'Signup successful.',
             'access_token': access_token,
             'refresh_token': str(refresh),
         }, status=status.HTTP_200_OK)
@@ -580,12 +584,12 @@ class UserSignupViewSet(viewsets.ViewSet):
         user.otp_created_at = now()
         user.save()
 
-        email_thread = EmailThread(
+        send_mail(
             subject='Resend OTP',
             message=f'Your OTP is: {otp}',
             recipient_list=[email],
+            from_email='no-reply@example.com',
         )
-        email_thread.start()
 
         return Response({"message": f"OTP resent to your email."}, status=status.HTTP_200_OK)
 
@@ -620,13 +624,13 @@ class UserLoginViewSet(viewsets.ViewSet):
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
-        # Send login success email (could be moved to a background task)
-        email_thread = EmailThread(
+        # Send login success email
+        send_mail(
             subject='Login Successful',
-            message=f'Your login to ASLuxeryOriginals.com was successful',
+            message=f'Your login to ASLuxeryOriginals.com was successful.',
             recipient_list=[email],
+            from_email=settings.EMAIL_HOST_USER,,
         )
-        email_thread.start()
 
         return Response({
             'message': 'Login successful.',
