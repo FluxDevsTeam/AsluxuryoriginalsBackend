@@ -20,6 +20,7 @@ class UserProfileSerializer(serializers.Serializer):
     new_email = serializers.CharField(write_only=True, required=False, min_length=8)
     new_first_name = serializers.CharField(write_only=True, required=False, min_length=2)
     new_last_name = serializers.CharField(write_only=True, required=False, min_length=2)
+    new_phone_number = serializers.CharField(write_only=True, required=False, min_length=11)
     password = serializers.CharField(write_only=True, required=False)
 
 
