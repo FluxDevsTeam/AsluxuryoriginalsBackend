@@ -33,8 +33,8 @@ urlpatterns = [
          name='resend_email_change_otp'),
     path('profile/verify-email-change/', UserProfileViewSet.as_view({'post': 'verify_email_change'}),
          name='verify_email_change'),
-    path('profile/request-name-change/', UserProfileViewSet.as_view({'post': 'request_name_change'}),
-         name='request_name_change'),
-    path('profile/verify-name-change/', UserProfileViewSet.as_view({'post': 'verify_name_change'}),
-         name='verify_name_change'),
+    path('profile/request-profile-change/', UserProfileViewSet.as_view({'post': 'request_profile_change'}),
+         name='request_profile_change'),
+    path('profile/verify-profile-change/', UserProfileViewSet.as_view({'post': 'verify_profile_change'}),
+         name='verify_profile_change'),
 ]
