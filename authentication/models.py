@@ -6,6 +6,7 @@ class NameChangeRequest(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="name_change_request")
     new_first_name = models.CharField(max_length=150, null=True, blank=True)
     new_last_name = models.CharField(max_length=150, null=True, blank=True)
+    new_phone_number = models.CharField(max_length=150, null=True, blank=True)
     otp = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
