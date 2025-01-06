@@ -335,7 +335,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             user.first_name = name_change_request.new_first_name
         if name_change_request.new_last_name:
             user.last_name = name_change_request.new_last_name
-        if name_change_request.new_last_name:
+        if name_change_request.new_phone_number:
             user.phone_number = name_change_request.new_phone_number
 
         user.save()
