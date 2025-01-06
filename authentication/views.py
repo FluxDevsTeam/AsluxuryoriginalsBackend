@@ -280,8 +280,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "Email updated successfully."}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['post'], url_path='request-name-change')
-    def request_name_change(self, request):
+    @action(detail=False, methods=['post'], url_path='request-profile-change')
+    def request_profile_change(self, request):
         """
         Request name change , just submitting the request with new name details.
         """
@@ -291,9 +291,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         user = request.user
         new_first_name = serializer.validated_data.get('new_first_name')
         new_last_name = serializer.validated_data.get('new_last_name')
+        new_phone_number = serializer.validated_data.get('new_phone_number')
 
-        if not new_first_name and not new_last_name:
-            return Response({"error": "At least one of new_first_name or new_last_name is required."},
+        if not new_first_name and not new_last_name and not new_phone_number:
+            return Response({"error": "At least one of new_first_name or new_last_name or new_phone_number is required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Clear any existing pending name change requests
@@ -304,12 +305,13 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             user=user,
             new_first_name=new_first_name,
             new_last_name=new_last_name,
+            new_phone_number=new_phone_number,
         )
 
         return Response({"message": "Name change request submitted successfully."}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['post'], url_path='verify-name-change')
-    def verify_name_change(self, request):
+    @action(detail=False, methods=['post'], url_path='verify-profile-change')
+    def verify_profile_change(self, request):
         """
         Verify password and update the user's name.
         """
@@ -333,13 +335,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             user.first_name = name_change_request.new_first_name
         if name_change_request.new_last_name:
             user.last_name = name_change_request.new_last_name
+        if name_change_request.new_last_name:
+            user.phone_number = name_change_request.new_phone_number
 
         user.save()
         name_change_request.delete()
 
         send_mail(
-            subject='Name Change Confirmation',
-            message="Your name has been successfully changed.",
+            subject='Profile Change Confirmation',
+            message="Your profile has been successfully updated.",
             recipient_list=[user.email],
             from_email=settings.EMAIL_HOST_USER,
         )
