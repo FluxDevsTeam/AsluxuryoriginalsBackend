@@ -1,5 +1,5 @@
 from django_filters import DateFilter, UUIDFilter
-from django_filters.rest_framework import FilterSet, CharFilter, NumberFilter
+from django_filters.rest_framework import FilterSet, CharFilter, NumberFilter, BooleanFilter
 from ecommerce.models import Product, Order
 
 
@@ -8,6 +8,7 @@ class ProductFilter(FilterSet):
     category_name = CharFilter(field_name='category__title', lookup_expr='exact')
     subcategory_id = NumberFilter(field_name='subcategory__id', lookup_expr='exact')
     subcategory_name = CharFilter(field_name='subcategory__title', lookup_expr='exact')
+    discount = BooleanFilter(field_name='discount')
 
     class Meta:
         model = Product
