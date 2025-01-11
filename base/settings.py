@@ -187,10 +187,10 @@ SWAGGER_SETTINGS = {
 }
 
 JAZZMIN_SETTINGS = {
-    "site_title": "KidsDecorBackend",
-    "site_header": "KidsDecorBackend",
-    "site_brand": "KidsDecorBackend",
-    "site_copyright": "kidsdecornaija.com",
+    "site_title": "ASLuxury Originals",
+    "site_header": "ASLuxury Originals",
+    "site_brand": "ASLuxury Originals",
+    "site_copyright": "asluxeryoriginals.com",
     "show_ui_builder": True
 }
 JAZZMIN_UI_TWEAKS = {
