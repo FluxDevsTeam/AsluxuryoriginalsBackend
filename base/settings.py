@@ -34,6 +34,7 @@ SITE_ID = 1
 
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -183,6 +184,17 @@ SWAGGER_SETTINGS = {
             "in": "header"
         }
     }
+}
+
+JAZZMIN_SETTINGS = {
+    "site_title": "KidsDecorBackend",
+    "site_header": "KidsDecorBackend",
+    "site_brand": "KidsDecorBackend",
+    "site_copyright": "kidsdecornaija.com",
+    "show_ui_builder": True
+}
+JAZZMIN_UI_TWEAKS = {
+    "theme": "cyborg",
 }
 
 # email
