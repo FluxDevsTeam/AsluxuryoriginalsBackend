@@ -36,7 +36,7 @@ def initiate_payment(amount, email, cart_id, user):
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        # "redirect_url": "https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/?c_id=" + cart_id,
+        "redirect_url": f"https://asluxeryoriginals.pythonanywhere.com/api/carts/{cart_id}/pay/",
         "meta": {
             "consumer_id": user_id,
             "consumer_mac": "92a3-912ba-1192a"
