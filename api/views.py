@@ -115,16 +115,25 @@ class ApiCart(viewsets.ModelViewSet):
         cart_id = request.GET.get("c_id")
         transaction_id = request.GET.get("transaction_id")
         address = request.GET.get("address")
+        state = request.GET.get("state")
+        city = request.GET.get("city")
+        postal_code = request.GET.get("postal_code")
+
         status_from_gateway = request.GET.get("status", "").lower()
         if status_from_gateway != "successful":
             return Response({"detail": "Payment failed."}, status=status.HTTP_400_BAD_REQUEST)
         if not address:
             return Response({"detail": "Input a delivery address."}, status=status.HTTP_400_BAD_REQUEST)
+        if not state:
+            return Response({"detail": "Input a delivery state."}, status=status.HTTP_400_BAD_REQUEST)
+        if not city:
+            return Response({"detail": "Input a delivery city."}, status=status.HTTP_400_BAD_REQUEST)
+
         with transaction.atomic():
             cart = get_object_or_404(Cart, id=cart_id, owner=request.user)
             cart_items = CartItems.objects.filter(cart=cart)
 
-            order = Order.objects.create(owner=request.user, address=address)
+            order = Order.objects.create(owner=request.user, address=address, state=state, city=city, postal_code=postal_code)
             order_items = []
             for cart_item in cart_items:
                 product = cart_item.product
