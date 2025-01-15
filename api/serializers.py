@@ -71,7 +71,7 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItems
-        fields = ['id', 'cart', 'product', 'quantity', 'sub_total']
+        fields = ['id', 'cart','size', 'product', 'quantity', 'sub_total']
         read_only_fields = ['id']
 
     def total(self, cartitem: CartItems):
@@ -143,7 +143,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItems
-        fields = ['id', 'product_id', 'quantity']
+        fields = ['id', 'product_id', 'size', 'quantity']
         read_only_fields = ['id']
 
 
@@ -170,7 +170,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity', 'owner']
+        fields = ['id', 'size', 'product', 'quantity', 'owner']
         read_only_fields = ['id']
 
 
