@@ -55,7 +55,11 @@ def initiate_payment(amount, email, cart_id, user):
     try:
         response = requests.post(url, headers=headers, json=data)
         response_data = response.json()
-        return Response(response_data)
+
+        if response.status_code == 200 or response.status_code == 201:
+            return Response(response_data, status=response.status_code)
+        else:
+            return Response({"error": response_data.get("message", "An error occurred")}, status=response.status_code)
 
     except requests.exceptions.RequestException as err:
         return Response({"error": str(err)}, status=500)
