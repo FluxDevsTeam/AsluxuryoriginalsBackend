@@ -146,7 +146,8 @@ class ApiCart(viewsets.ModelViewSet):
                         order=order,
                         product=product,
                         quantity=cart_item.quantity,
-                        price=cart_item.product.price
+                        price=cart_item.product.price,
+                        size=cart_item.size
                     )
                 )
             OrderItem.objects.bulk_create(order_items)
