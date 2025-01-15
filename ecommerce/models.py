@@ -88,6 +88,7 @@ class Cart(models.Model):
 
 class CartItems(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
+    size = models.CharField(max_length=200)
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items')
     quantity = models.PositiveSmallIntegerField(default=0)
