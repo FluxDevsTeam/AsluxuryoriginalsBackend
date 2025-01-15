@@ -36,7 +36,7 @@ def initiate_payment(amount, email, cart_id, user):
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        "redirect_url": f"https://asluxeryoriginals.pythonanywhere.com/api/carts/{cart_id}/pay/",
+        "redirect_url": "https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/?c_id=" + cart_id,
         "meta": {
             "consumer_id": user_id,
             "consumer_mac": "92a3-912ba-1192a"
@@ -113,7 +113,7 @@ class ApiCart(viewsets.ModelViewSet):
 
         return initiate_payment(amount, email, cart_id, user)
 
-    @action(detail=False, methods=["POST"])
+    @action(detail=False, methods=["POST", "GET"])
     def confirm_payment(self, request):
 
         cart_id = request.GET.get("c_id")
