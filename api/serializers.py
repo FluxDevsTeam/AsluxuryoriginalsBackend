@@ -56,6 +56,17 @@ class ProductSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+class ProductSerializerView(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False)
+    subcategory = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all(), required=False)
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'price', 'inventory',
+                  'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
+        read_only_fields = ['id']
+
+
 class SimpleProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
 
@@ -71,7 +82,7 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItems
-        fields = ['id', 'cart','size', 'product', 'quantity', 'sub_total']
+        fields = ['id', 'cart', 'size', 'product', 'quantity', 'sub_total']
         read_only_fields = ['id']
 
     def total(self, cartitem: CartItems):
@@ -150,7 +161,7 @@ class AddCartItemSerializer(serializers.ModelSerializer):
 class UpdateCartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItems
-        fields = ['quantity']
+        fields = ['quantity', 'size']
         read_only_fields = ['id']
 
     def save(self, **kwargs):
@@ -166,7 +177,7 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer()
+    product = ProductSerializerView()
 
     class Meta:
         model = OrderItem
