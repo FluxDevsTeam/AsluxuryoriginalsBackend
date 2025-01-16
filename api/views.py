@@ -33,10 +33,10 @@ def initiate_payment(amount, email, cart_id, user):
     phone_no = user.phone_number
 
     data = {
+        "version": "2.1.0",
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        "redirect_url": "https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/?c_id=" + cart_id,
         "meta": {
             "consumer_id": user_id,
             "consumer_mac": "92a3-912ba-1192a"
@@ -113,7 +113,7 @@ class ApiCart(viewsets.ModelViewSet):
 
         return initiate_payment(amount, email, cart_id, user)
 
-    @action(detail=False, methods=["POST", "GET"])
+    @action(detail=False, methods=["POST"])
     def confirm_payment(self, request):
 
         cart_id = request.GET.get("c_id")
@@ -154,6 +154,8 @@ class ApiCart(viewsets.ModelViewSet):
                         size=cart_item.size
                     )
                 )
+                print(product.image1)
+                print(product)
             OrderItem.objects.bulk_create(order_items)
             amount = order.calculate_total_price()
             order.save()
