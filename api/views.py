@@ -214,7 +214,7 @@ class ApiCart(viewsets.ModelViewSet):
             cart.delete()
 
             # Redirect to the order detail page
-            return redirect(f"https://asluxeryoriginals.pythonanywhere.com/api/orders/{order.id}")
+            return redirect(f"https://asloriginals.netlify.app/orders/")
 
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user).select_related('owner').prefetch_related('items')
