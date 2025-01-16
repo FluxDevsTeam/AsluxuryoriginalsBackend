@@ -78,23 +78,6 @@ def initiate_payment(amount, email, cart_id, user):
         return Response({"error": str(err)}, status=500)
 
 
-def payment_redirect_handler(request):
-    status = request.GET.get('status')  # e.g., 'successful', 'failed'
-    tx_ref = request.GET.get('tx_ref')  # Unique transaction reference
-    transaction_id = request.GET.get('transaction_id')  # Flutterwave's transaction ID
-
-    if not status or not tx_ref or not transaction_id:
-        return JsonResponse({"error": "Missing required query parameters."}, status=400)
-
-    # Process the payment status here (e.g., update order status in the database)
-    return JsonResponse({
-        "message": "Payment status received.",
-        "status": status,
-        "tx_ref": tx_ref,
-        "transaction_id": transaction_id
-    })
-
-
 class ApiProducts(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -209,11 +192,9 @@ class ApiCart(viewsets.ModelViewSet):
             )
             email_thread.start()
 
-            # Clean up the cart
             cart_items.delete()
             cart.delete()
 
-            # Redirect to the order detail page
             return redirect(f"https://asloriginals.netlify.app/orders/")
 
     def get_queryset(self):
