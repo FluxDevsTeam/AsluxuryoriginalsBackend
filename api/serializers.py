@@ -95,7 +95,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'items', 'owner', 'grand_total']
+        fields = ['id', 'address', 'city', 'state', 'postal_code', 'items', 'owner', 'grand_total']
         read_only_fields = ['id', 'owner']
 
     def create(self, validated_data):
