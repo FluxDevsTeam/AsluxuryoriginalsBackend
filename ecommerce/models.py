@@ -108,6 +108,7 @@ class CartItems(models.Model):
 class Order(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     placed_at = models.DateTimeField(auto_now_add=True)
+    transaction_id = models.CharField(max_length=200)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="order_history")
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     address = models.CharField(max_length=200)
