@@ -1,4 +1,5 @@
 import uuid
+from django.http import JsonResponse
 import requests
 from django.db.models import Sum, F, Value, DecimalField
 from django.db.models.functions import Coalesce, Cast
@@ -6,7 +7,7 @@ from rest_framework.viewsets import ViewSet
 from .utils import EmailThread
 from rest_framework.response import Response
 from django.conf import settings
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status
@@ -33,10 +34,10 @@ def initiate_payment(amount, email, cart_id, user):
     phone_no = user.phone_number
 
     data = {
-        "version": "2.1.0",
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
+        "redirect_url": f"https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/?c_id={cart_id}",
         "meta": {
             "consumer_id": user_id,
             "consumer_mac": "92a3-912ba-1192a"
@@ -56,13 +57,42 @@ def initiate_payment(amount, email, cart_id, user):
         response = requests.post(url, headers=headers, json=data)
         response_data = response.json()
 
-        if response.status_code == 200 or response.status_code == 201:
-            return Response(response_data, status=response.status_code)
+        if response.status_code in [200, 201]:
+            payment_link = response_data.get("data", {}).get("link")
+            if not payment_link:
+                return Response(
+                    {"error": "Payment link not found in the response."},
+                    status=500
+                )
+            return Response({
+                "message": "Payment initiated successfully.",
+                "payment_link": payment_link,
+                "transaction_id": response_data.get("data", {}).get("id")
+            }, status=200)
         else:
-            return Response({"error": response_data.get("message", "An error occurred")}, status=response.status_code)
+            return Response({
+                "error": response_data.get("message", "An error occurred while initiating payment.")
+            }, status=response.status_code)
 
     except requests.exceptions.RequestException as err:
         return Response({"error": str(err)}, status=500)
+
+
+def payment_redirect_handler(request):
+    status = request.GET.get('status')  # e.g., 'successful', 'failed'
+    tx_ref = request.GET.get('tx_ref')  # Unique transaction reference
+    transaction_id = request.GET.get('transaction_id')  # Flutterwave's transaction ID
+
+    if not status or not tx_ref or not transaction_id:
+        return JsonResponse({"error": "Missing required query parameters."}, status=400)
+
+    # Process the payment status here (e.g., update order status in the database)
+    return JsonResponse({
+        "message": "Payment status received.",
+        "status": status,
+        "tx_ref": tx_ref,
+        "transaction_id": transaction_id
+    })
 
 
 class ApiProducts(viewsets.ModelViewSet):
@@ -113,34 +143,44 @@ class ApiCart(viewsets.ModelViewSet):
 
         return initiate_payment(amount, email, cart_id, user)
 
-    @action(detail=False, methods=["POST"])
+    @action(detail=False, methods=["GET"])
     def confirm_payment(self, request):
 
         cart_id = request.GET.get("c_id")
         transaction_id = request.GET.get("transaction_id")
-        address = request.GET.get("address")
-        state = request.GET.get("state")
-        city = request.GET.get("city")
-        postal_code = request.GET.get("postal_code")
-
         status_from_gateway = request.GET.get("status", "").lower()
+
         if status_from_gateway != "successful":
-            return Response({"detail": "Payment failed."}, status=status.HTTP_400_BAD_REQUEST)
-        if not address:
-            return Response({"detail": "Input a delivery address."}, status=status.HTTP_400_BAD_REQUEST)
-        if not state:
-            return Response({"detail": "Input a delivery state."}, status=status.HTTP_400_BAD_REQUEST)
-        if not city:
-            return Response({"detail": "Input a delivery city."}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({"detail": "Payment failed."}, status=400)
 
         with transaction.atomic():
             cart = get_object_or_404(Cart, id=cart_id, owner=request.user)
             cart_items = CartItems.objects.filter(cart=cart)
 
-            order = Order.objects.create(owner=request.user, address=address, state=state, city=city, postal_code=postal_code)
+            if not cart_items.exists():
+                return JsonResponse({"detail": "Cart is empty or invalid."}, status=400)
+
+            # Create an order
+            order = Order.objects.create(
+                owner=request.user,
+                address=cart.address,
+                state=cart.state,
+                city=cart.city,
+                postal_code=cart.postal_code,
+                transaction_id=transaction_id
+            )
             order_items = []
             for cart_item in cart_items:
                 product = cart_item.product
+                if product.inventory < cart_item.quantity:
+                    return JsonResponse(
+                        {
+                            "error": f"Not enough inventory for product '{product.name}'. "
+                                     f"Available: {product.inventory}, Requested: {cart_item.quantity}"
+                        },
+                        status=400
+                    )
+
                 product.inventory -= cart_item.quantity
                 product.save()
 
@@ -154,26 +194,27 @@ class ApiCart(viewsets.ModelViewSet):
                         size=cart_item.size
                     )
                 )
-                print(product.image1)
-                print(product)
+
             OrderItem.objects.bulk_create(order_items)
             amount = order.calculate_total_price()
             order.save()
+
+            # Notify admin
             email_thread = EmailThread(
-                subject='new order',
-                message=f'user {request.user.email}  made an order of total amount of ₦{amount}, order id is {order.id}. link to order https://asluxeryoriginals.pythonanywhere.com/api/orders/{order.id}',
-                recipient_list=["suskidee@gmail.com"],
+                subject='New Order',
+                message=f'User {request.user.email} made an order of total amount of ₦{amount}, '
+                        f'order ID is {order.id}. Link to order: '
+                        f'https://asluxeryoriginals.pythonanywhere.com/api/orders/{order.id}',
+                recipient_list=[settings.EMAIL_HOST_USER],
             )
             email_thread.start()
+
+            # Clean up the cart
             cart_items.delete()
             cart.delete()
 
-            serializer = OrderSerializer(order)
-            return Response({
-                "message": "Payment successful, order created.",
-                "order": serializer.data,
-                "transaction_id": transaction_id
-            }, status=status.HTTP_201_CREATED)
+            # Redirect to the order detail page
+            return redirect(f"https://asluxeryoriginals.pythonanywhere.com/api/orders/{order.id}")
 
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user).select_related('owner').prefetch_related('items')
