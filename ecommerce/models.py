@@ -67,6 +67,10 @@ class Product(models.Model):
 
 class Cart(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
+    address = models.CharField(max_length=200)
+    city = models.CharField(max_length=200)
+    state = models.CharField(max_length=200)
+    postal_code = models.CharField(max_length=200, blank=True, null=True)
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
