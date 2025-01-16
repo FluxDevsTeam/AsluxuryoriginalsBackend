@@ -16,8 +16,8 @@ cart_router = NestedDefaultRouter(router, 'carts', lookup='cart')
 cart_router.register('items', ApiCartItem, basename='cart-items')
 
 urlpatterns = [
-    path('', include(router.urls)),  # Main API urls
-    path('', include(cart_router.urls)),  # Nested urls for Cart and CartItems
+    path('', include(router.urls)),
+    path('', include(cart_router.urls)),
     path('dashboard/', DashboardOrderViewSet.as_view({'get': 'list'}), name='dashboard'),
     path('dashboard/summary/', DashboardOrderViewSet.as_view({'get': 'summary'}),
          name='summary'),
