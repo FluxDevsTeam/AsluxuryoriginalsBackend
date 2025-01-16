@@ -258,7 +258,7 @@ class ApiOrder(viewsets.ModelViewSet):
 
 
 class DashboardOrderViewSet(ViewSet):
-    # permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['id']
 
