@@ -204,7 +204,7 @@ class ApiCart(viewsets.ModelViewSet):
                 subject='New Order',
                 message=f'User {request.user.email} made an order of total amount of ₦{amount}, '
                         f'order ID is {order.id}. Link to order: '
-                        f'https://asluxeryoriginals.pythonanywhere.com/api/orders/{order.id}',
+                        f'https://asloriginals.netlify.app/orders/',
                 recipient_list=[settings.EMAIL_HOST_USER],
             )
             email_thread.start()
