@@ -297,10 +297,10 @@ class DashboardOrderViewSet(ViewSet):
         Retrieve the list of most sold products with quantities and total sales price.
         Supports filtering by revenue generated.
         """
-        # Aggregate product data
+
         products_data = (
             OrderItem.objects
-            .values(product_name=F('product__name'), product_identifier=F('product__id'))  # Use unique alias
+            .values(product_name=F('product__name'), product_identifier=F('product__id'))
             .annotate(
                 total_quantity=Sum('quantity'),
                 total_revenue=Coalesce(
@@ -308,18 +308,16 @@ class DashboardOrderViewSet(ViewSet):
                         Cast(F('quantity'), DecimalField()) * Cast(F('price'), DecimalField())
                     ),
                     Value(0),
-                    output_field=DecimalField()  # Explicitly set the output field type to DecimalField
+                    output_field=DecimalField()
                 ),
             )
-            .filter(total_quantity__gt=0)  # Exclude products that have not sold
-            .order_by('-total_quantity')  # Default: Most sold by quantity
+            .filter(total_quantity__gt=0)
+            .order_by('-total_quantity')
         )
 
-        # Check for ordering by revenue
         if request.GET.get('order_by') == 'revenue':
             products_data = products_data.order_by('-total_revenue')
 
-        # Total revenue of filtered results
         total_revenue = sum([item['total_revenue'] for item in products_data])
 
         return Response({
