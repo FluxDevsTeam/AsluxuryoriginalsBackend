@@ -133,7 +133,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     size = models.CharField(max_length=200)
-    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="items")
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="order_items")
     quantity = models.PositiveSmallIntegerField()
