@@ -2,6 +2,7 @@ from django.db import models
 from autoslug import AutoSlugField
 import uuid
 from django.conf import settings
+from django.utils.timezone import now
 
 
 # note i had to create multiple functions because lambda doesnt pass makemigrations and migrate
@@ -116,6 +117,7 @@ class Order(models.Model):
     state = models.CharField(max_length=200)
     postal_code = models.CharField(max_length=200, blank=True, null=True)
     delivered = models.BooleanField(default=False)
+    delivered_on = models.DateTimeField(blank=True, null=True)
     slug = AutoSlugField(populate_from=generate_order_slug, db_index=True)
 
     def calculate_total_price(self):
@@ -123,6 +125,10 @@ class Order(models.Model):
         return self.total_price
 
     def save(self, *args, **kwargs):
+        if self.delivered and self.delivered_on is None:
+            self.delivered_on = now()
+        elif not self.delivered:
+            self.delivered_on = None
         self.calculate_total_price()
         super().save(*args, **kwargs)
 
