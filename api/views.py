@@ -178,10 +178,7 @@ class ApiCart(viewsets.ModelViewSet):
                 transaction_id=transaction_id
             )
 
-            return JsonResponse({
-                "detail": "Payment confirmed and order created successfully.",
-                "order_id": str(order.id),
-            }, status=200)
+            return redirect(f"https://asloriginals.netlify.app/orders/")
 
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user).select_related('owner').prefetch_related('items')
