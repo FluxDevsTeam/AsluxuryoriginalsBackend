@@ -137,8 +137,17 @@ class ApiCart(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        return initiate_payment(amount, email, cart_id, user)
+        # Generate token
+        confirm_token = generate_confirm_token(user, cart_id)
 
+        # Include token in the redirect URL
+        redirect_url = (
+            f"https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/"
+            f"?c_id={cart_id}&token={confirm_token}"
+        )
+
+        # Call initiate_payment
+        return initiate_payment(amount, email, cart_id, user, redirect_url)
     @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
     def confirm_payment(self, request):
         cart_id = request.GET.get("c_id")
