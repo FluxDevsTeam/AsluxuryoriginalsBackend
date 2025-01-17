@@ -143,7 +143,7 @@ class ApiCart(viewsets.ModelViewSet):
             f"https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/"
             f"?c_id={cart_id}&token={confirm_token}"
         )
-        return initiate_payment(amount, email, cart_id, user, redirect_url)
+        return initiate_payment(amount, email, user, redirect_url)
 
     @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
     def confirm_payment(self, request):
