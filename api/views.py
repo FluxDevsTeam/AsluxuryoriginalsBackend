@@ -126,7 +126,7 @@ class ApiCart(viewsets.ModelViewSet):
 
         return initiate_payment(amount, email, cart_id, user)
 
-    @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
+    @action(detail=False, methods=["GET"])
     def confirm_payment(self, request):
 
         cart_id = request.GET.get("c_id")
