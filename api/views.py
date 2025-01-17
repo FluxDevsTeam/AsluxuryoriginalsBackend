@@ -126,7 +126,7 @@ class ApiCart(viewsets.ModelViewSet):
 
         return initiate_payment(amount, email, cart_id, user)
 
-    @action(detail=False, methods=["GET"])
+    @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
     def confirm_payment(self, request):
 
         cart_id = request.GET.get("c_id")
@@ -137,7 +137,7 @@ class ApiCart(viewsets.ModelViewSet):
             return JsonResponse({"detail": "Payment failed."}, status=400)
 
         with transaction.atomic():
-            cart = get_object_or_404(Cart, id=cart_id, owner=request.user)
+            cart = get_object_or_404(Cart, id=cart_id)
             cart_items = CartItems.objects.filter(cart=cart)
 
             if not cart_items.exists():
