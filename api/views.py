@@ -14,7 +14,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from .permissions import IsAdminOrReadOnly, IsOwner, IsOwnerOrAdmin
 from ecommerce.models import Product, Category, Cart, Order, CartItems, OrderItem, SubCategory
 from .filters import ProductFilter, OrderFilter
@@ -126,7 +126,7 @@ class ApiCart(viewsets.ModelViewSet):
 
         return initiate_payment(amount, email, cart_id, user)
 
-    @action(detail=False, methods=["GET"])
+    @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
     def confirm_payment(self, request):
 
         cart_id = request.GET.get("c_id")
@@ -145,7 +145,7 @@ class ApiCart(viewsets.ModelViewSet):
 
             # Create an order
             order = Order.objects.create(
-                owner=request.user,
+                owner=cart.owner,
                 address=cart.address,
                 state=cart.state,
                 city=cart.city,
@@ -169,7 +169,7 @@ class ApiCart(viewsets.ModelViewSet):
 
                 order_items.append(
                     OrderItem(
-                        owner=request.user,
+                        owner=cart.owner,
                         order=order,
                         product=product,
                         quantity=cart_item.quantity,
@@ -185,7 +185,7 @@ class ApiCart(viewsets.ModelViewSet):
             # Notify admin
             email_thread = EmailThread(
                 subject='New Order',
-                message=f'User {request.user.email} made an order of total amount of ₦{amount}, '
+                message=f'User {cart.owner.email} made an order of total amount of ₦{amount}, '
                         f'order ID is {order.id}. Link to order: '
                         f'https://asloriginals.netlify.app/orders/',
                 recipient_list=[settings.EMAIL_HOST_USER],
