@@ -21,25 +21,37 @@ from .filters import ProductFilter, OrderFilter
 from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, \
     AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, SimpleProductSerializer, \
     SubCategorySerializer, GetProductSerializer, DashboardOrderSerializer
+from datetime import timedelta
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils.timezone import now
 
 
-def initiate_payment(amount, email, cart_id, user):
+def generate_confirm_token(user, cart_id):
+    """
+    Generates a token for payment confirmation.
+    """
+    refresh = RefreshToken.for_user(user)
+    refresh['cart_id'] = cart_id
+    refresh['exp'] = now() + timedelta(hours=20)  # Token valid for 30 minutes
+    return str(refresh.access_token)
+
+
+def initiate_payment(amount, email, user, redirect_url):
     url = "https://api.flutterwave.com/v3/payments"
     headers = {
         "Authorization": f"Bearer {settings.FLW_SEC_KEY}"
     }
     first_name = user.first_name
     last_name = user.last_name
-    user_id = user.id
     phone_no = user.phone_number
 
     data = {
         "tx_ref": str(uuid.uuid4()),
         "amount": str(amount),
         "currency": "NGN",
-        "redirect_url": f"https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/?c_id={cart_id}",
+        "redirect_url": redirect_url,
         "meta": {
-            "consumer_id": user_id,
+            "consumer_id": user.id,
             "consumer_mac": "92a3-912ba-1192a"
         },
         "customer": {
@@ -67,7 +79,6 @@ def initiate_payment(amount, email, cart_id, user):
             return Response({
                 "message": "Payment initiated successfully.",
                 "payment_link": payment_link,
-                "transaction_id": response_data.get("data", {}).get("id")
             }, status=200)
         else:
             return Response({
