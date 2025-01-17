@@ -163,7 +163,7 @@ class ApiCart(viewsets.ModelViewSet):
             return JsonResponse({"detail": "Payment failed."}, status=400)
 
         with transaction.atomic():
-            cart = get_object_or_404(Cart, id=cart_id)
+            cart = get_object_or_404(Cart, id=cart_id, owner=user)
             cart_items = CartItems.objects.filter(cart=cart)
 
             if not cart_items.exists():
@@ -177,6 +177,49 @@ class ApiCart(viewsets.ModelViewSet):
                 postal_code=cart.postal_code,
                 transaction_id=transaction_id
             )
+
+            order_items = []
+            for cart_item in cart_items:
+                product = cart_item.product
+                if product.inventory < cart_item.quantity:
+                    return JsonResponse(
+                        {
+                            "error": f"Not enough inventory for product '{product.name}'. "
+                                     f"Available: {product.inventory}, Requested: {cart_item.quantity}"
+                        },
+                        status=400
+                    )
+
+                product.inventory -= cart_item.quantity
+                product.save()
+
+                order_items.append(
+                    OrderItem(
+                        owner=user,
+                        order=order,
+                        product=product,
+                        quantity=cart_item.quantity,
+                        price=cart_item.product.price,
+                        size=cart_item.size
+                    )
+                )
+
+            OrderItem.objects.bulk_create(order_items)
+            amount = order.calculate_total_price()
+            order.save()
+
+            # Notify admin
+            email_thread = EmailThread(
+                subject='New Order',
+                message=f'User {user.email} made an order of total amount of ₦{amount}, '
+                        f'order ID is {order.id}. Link to order: '
+                        f'https://asloriginals.netlify.app/orders/',
+                recipient_list=[settings.EMAIL_HOST_USER],
+            )
+            email_thread.start()
+
+            cart_items.delete()
+            cart.delete()
 
             return redirect(f"https://asloriginals.netlify.app/orders/")
 
