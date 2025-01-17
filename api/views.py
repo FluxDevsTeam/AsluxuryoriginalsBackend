@@ -137,17 +137,14 @@ class ApiCart(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Generate token
         confirm_token = generate_confirm_token(user, cart_id)
 
-        # Include token in the redirect URL
         redirect_url = (
             f"https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/"
             f"?c_id={cart_id}&token={confirm_token}"
         )
-
-        # Call initiate_payment
         return initiate_payment(amount, email, cart_id, user, redirect_url)
+
     @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
     def confirm_payment(self, request):
         cart_id = request.GET.get("c_id")
@@ -162,7 +159,6 @@ class ApiCart(viewsets.ModelViewSet):
         except AuthenticationFailed:
             return JsonResponse({"detail": "Invalid or expired confirmation token."}, status=401)
 
-        # Validate payment status
         if status_from_gateway != "successful":
             return JsonResponse({"detail": "Payment failed."}, status=400)
 
@@ -173,7 +169,6 @@ class ApiCart(viewsets.ModelViewSet):
             if not cart_items.exists():
                 return JsonResponse({"detail": "Cart is empty or invalid."}, status=400)
 
-            # Create an order
             order = Order.objects.create(
                 owner=user,
                 address=cart.address,
@@ -182,9 +177,6 @@ class ApiCart(viewsets.ModelViewSet):
                 postal_code=cart.postal_code,
                 transaction_id=transaction_id
             )
-
-            # Process the cart items into the order...
-            # (Remaining order processing logic stays the same)
 
             return JsonResponse({
                 "detail": "Payment confirmed and order created successfully.",
