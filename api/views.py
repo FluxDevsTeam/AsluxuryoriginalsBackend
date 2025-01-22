@@ -160,7 +160,7 @@ class ApiCart(viewsets.ModelViewSet):
             return JsonResponse({"detail": "Invalid or expired confirmation token."}, status=401)
 
         if status_from_gateway != "successful":
-            return JsonResponse({"detail": "Payment failed."}, status=400)
+            return redirect(f"https://asloriginals.netlify.app/checkout/")
 
         with transaction.atomic():
             cart = get_object_or_404(Cart, id=cart_id, owner=user)
