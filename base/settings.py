@@ -105,7 +105,7 @@ DATABASES = {
 #         'ENGINE': 'mysql.connector.django',
 #         'NAME': os.getenv("NAME"),
 #         'USER': os.getenv("USER"),
-#         'PASSWORD': os.getenv("PASSWORD"),
+#         'PASSWORD': os.getenv("DB_PASSWORD"),
 #         'HOST': os.getenv("HOST"),
 #         'PORT': os.getenv("PORT"),
 #     }
