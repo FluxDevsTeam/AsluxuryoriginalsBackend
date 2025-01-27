@@ -108,6 +108,7 @@ DATABASES = {
 #         'PASSWORD': os.getenv("DB_PASSWORD"),
 #         'HOST': os.getenv("HOST"),
 #         'PORT': os.getenv("PORT"),
+#         'OPTIONS': {'raise_on_warnings': False,},
 #     }
 # }
 
