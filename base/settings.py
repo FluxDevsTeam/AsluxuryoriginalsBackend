@@ -99,6 +99,7 @@ DATABASES = {
     }
 }
 
+# used mysql.connector.django because thats what cpanel shared hosting accepts
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'mysql.connector.django',
