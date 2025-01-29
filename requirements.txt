@@ -17,6 +17,7 @@ django-autoslug==1.9.9
 django-cors-headers==4.6.0
 django-filter==24.3
 django-jazzmin==3.0.1
+django-mysql==4.15.0
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
 drf-nested-routers==0.94.1
@@ -31,11 +32,13 @@ prompt_toolkit==3.0.48
 psycopg2-binary==2.9.10
 pycparser==2.22
 PyJWT==2.10.1
+PyMySQL==1.1.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.2
 PyYAML==6.0.2
 requests==2.32.3
+setuptools==75.6.0
 six==1.17.0
 sqlparse==0.5.3
 tzdata==2024.2
@@ -43,4 +46,5 @@ uritemplate==4.1.1
 urllib3==2.2.3
 vine==5.1.0
 wcwidth==0.2.13
+wheel==0.45.1
 whitenoise==6.8.2
