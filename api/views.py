@@ -160,7 +160,7 @@ class ApiCart(viewsets.ModelViewSet):
             return JsonResponse({"detail": "Invalid or expired confirmation token."}, status=401)
 
         if status_from_gateway != "successful":
-            return redirect(f"https://asloriginals.netlify.app/checkout/")
+            return redirect(f"https://asluxuryoriginals.com/checkout/")
 
         with transaction.atomic():
             cart = get_object_or_404(Cart, id=cart_id, owner=user)
@@ -213,7 +213,7 @@ class ApiCart(viewsets.ModelViewSet):
                 subject='New Order',
                 message=f'User {user.email} made an order of total amount of ₦{amount}, '
                         f'order ID is {order.id}. Link to order: '
-                        f'https://asloriginals.netlify.app/orders/',
+                        f'https://asluxuryoriginals.com/orders/{order.id}',
                 recipient_list=[settings.EMAIL_HOST_USER],
             )
             email_thread.start()
@@ -221,7 +221,7 @@ class ApiCart(viewsets.ModelViewSet):
             cart_items.delete()
             cart.delete()
 
-            return redirect(f"https://asloriginals.netlify.app/orders/")
+            return redirect(f"https://asluxuryoriginals.com/orders/{order.id}")
 
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user).select_related('owner').prefetch_related('items')
