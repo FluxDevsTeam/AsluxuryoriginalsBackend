@@ -19,7 +19,7 @@ from .permissions import IsAdminOrReadOnly, IsOwner, IsOwnerOrAdmin
 from ecommerce.models import Product, Category, Cart, Order, CartItems, OrderItem, SubCategory
 from .filters import ProductFilter, OrderFilter
 from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, \
-    AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, SimpleProductSerializer, \
+    AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, \
     SubCategorySerializer, GetProductSerializer, DashboardOrderSerializer
 from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
