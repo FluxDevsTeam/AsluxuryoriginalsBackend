@@ -213,7 +213,7 @@ class ApiCart(viewsets.ModelViewSet):
                 subject='New Order',
                 message=f'User {user.email} made an order of total amount of ₦{amount}, '
                         f'order ID is {order.id}. Link to order: '
-                        f'https://asluxuryoriginals.com/orders/{order.id}',
+                        f'https://asluxuryoriginals.com/orders/',
                 recipient_list=[settings.EMAIL_HOST_USER],
             )
             email_thread.start()
@@ -221,7 +221,7 @@ class ApiCart(viewsets.ModelViewSet):
             cart_items.delete()
             cart.delete()
 
-            return redirect(f"https://asluxuryoriginals.com/orders/{order.id}")
+            return redirect(f"https://asluxuryoriginals.com/orders/")
 
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user).select_related('owner').prefetch_related('items')
