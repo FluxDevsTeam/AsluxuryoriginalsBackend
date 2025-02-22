@@ -19,7 +19,7 @@ from .permissions import IsAdminOrReadOnly, IsOwner, IsOwnerOrAdmin
 from ecommerce.models import Product, Category, Cart, Order, CartItems, OrderItem, SubCategory
 from .filters import ProductFilter, OrderFilter
 from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, \
-    AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, \
+    AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, SimpleProductSerializer, \
     SubCategorySerializer, GetProductSerializer, DashboardOrderSerializer
 from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -54,7 +54,6 @@ def initiate_payment(amount, email, user, redirect_url):
         "redirect_url": redirect_url,
         "meta": {
             "consumer_id": user.id,
-            "consumer_mac": "92a3-912ba-1192a"
         },
         "customer": {
             "email": email,
@@ -62,7 +61,7 @@ def initiate_payment(amount, email, user, redirect_url):
             "name": f"{last_name} {first_name}"
         },
         "customizations": {
-            "title": "AXLuxeryOriginals",
+            "title": "ASLUXURY ORIGINALS",
             "logo": "https://th.bing.com/th/id/OIP.YUyvxZV46V46TKoPLtcyjwHaIj?w=183&h=211&c=7&r=0&o=5&pid=1.7"
         }
     }
@@ -120,6 +119,7 @@ class ApiCart(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'])
     def pay(self, request, pk=None):
         cart = self.get_object()
+        print(cart)
         cart_items = CartItems.objects.filter(cart=cart)
         amount = cart.get_total_price()
         email = request.user.email
@@ -127,6 +127,7 @@ class ApiCart(viewsets.ModelViewSet):
         cart_id = str(cart.id)
 
         for cart_item in cart_items:
+            print("item")
             product = cart_item.product
             if product.inventory < cart_item.quantity:
                 return Response(
@@ -143,6 +144,7 @@ class ApiCart(viewsets.ModelViewSet):
             f"https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/"
             f"?c_id={cart_id}&token={confirm_token}"
         )
+
         return initiate_payment(amount, email, user, redirect_url)
 
     @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
@@ -208,7 +210,6 @@ class ApiCart(viewsets.ModelViewSet):
             amount = order.calculate_total_price()
             order.save()
 
-            # Notify admin
             email_thread = EmailThread(
                 subject='New Order',
                 message=f'User {user.email} made an order of total amount of ₦{amount}, '
@@ -221,7 +222,7 @@ class ApiCart(viewsets.ModelViewSet):
             cart_items.delete()
             cart.delete()
 
-            return redirect(f"https://asluxuryoriginals.com/orders/")
+            return redirect(f"https://asloriginals.netlify.app/orders/")
 
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user).select_related('owner').prefetch_related('items')
