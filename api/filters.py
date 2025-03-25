@@ -14,6 +14,7 @@ class ProductFilter(FilterSet):
         model = Product
         fields = {
             'price': ['gt', 'lt'],  # Only include fields that are directly on the Product model
+            'undiscounted_price': ['gt', 'lt'],  
         }
 
 
