@@ -23,15 +23,15 @@ class GetProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'inventory',
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'undiscounted_price', 'inventory',
                   'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
         read_only_fields = ['id']
 
     def get_category(self, obj):
         if obj.category:
             return {
-                "name": obj.category.title,
-                "id": obj.category.id
+                "id": obj.category.id,
+                "name": obj.category.title
             }
         return None
 
@@ -51,28 +51,16 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'inventory',
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'undiscounted_price', 'inventory',
                   'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
         read_only_fields = ['id']
-
-
-class ProductSerializerView(serializers.ModelSerializer):
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False)
-    subcategory = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all(), required=False)
-
-    class Meta:
-        model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'price', 'inventory',
-                  'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
-        read_only_fields = ['id']
-
 
 class SimpleProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'category', 'slug']
+        fields = ['id', 'name', 'price', 'undiscounted_price','category', 'slug']
         read_only_fields = ['id']
 
 
@@ -178,7 +166,7 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializerView()
+    product = ProductSerializer()
 
     class Meta:
         model = OrderItem
