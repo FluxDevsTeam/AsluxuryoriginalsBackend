@@ -52,10 +52,9 @@ class Product(models.Model):
     colour = models.JSONField(blank=True, null=True)
     size = models.JSONField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
-    undiscounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
+    undiscounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=00.00, null=True, blank=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='products')
-    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, blank=True, null=True,
-                                    related_name='products_subcategory')
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, blank=True, null=True,related_name='products_subcategory')
     slug = AutoSlugField(populate_from='name', db_index=True)
     inventory = models.IntegerField(default=5)
     top_deal = models.BooleanField(default=False)
