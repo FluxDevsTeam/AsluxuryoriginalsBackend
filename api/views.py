@@ -95,7 +95,7 @@ class ApiProducts(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProductFilter
     search_fields = ['name', 'description', 'colour', 'material']
-    ordering_fields = ['price']
+    ordering_fields = ['price', 'undiscounted_price']
     pagination_class = PageNumberPagination
 
     def get_serializer_class(self):

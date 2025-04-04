@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils.timezone import now
 
 
-# note i had to create multiple functions because lambda doesnt pass makemigrations and migrate
+# note i had to create multiple functions because lambda doesn't pass makemigrations and migrate
 
 def generate_cart_slug(instance):
     return f"{instance.owner.email}-cart"
@@ -52,6 +52,7 @@ class Product(models.Model):
     colour = models.JSONField(blank=True, null=True)
     size = models.JSONField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
+    undiscounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True, null=True, related_name='products')
     subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, blank=True, null=True,
                                     related_name='products_subcategory')
