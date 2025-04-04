@@ -15,6 +15,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,7 +28,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG")
 
-ALLOWED_HOSTS = ["api.asluxuryoriginals.com", "www.api.asluxuryoriginals.com"]
+ALLOWED_HOSTS = ["api.asluxuryoriginals.com", "www.api.asluxuryoriginals.com", "127.0.0.1"]
 
 # Application definition
 SITE_ID = 1
@@ -99,7 +100,14 @@ WSGI_APPLICATION = 'base.wsgi.application'
 #     }
 # }
 
-# used mysql.connector.django because thats what cpanel shared hosting accepts
+# used pymysql to host on shared server
+# also add
+# import os
+# import sys
+# import pymysql
+# pymysql.install_as_MySQLdb()
+#
+# to manage.py and wsgi.py file
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -207,28 +215,7 @@ EMAIL_HOST_USER = os.getenv("EMAIL")
 EMAIL_HOST_PASSWORD = os.getenv("PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL")
 
-
-# # Optional: Allow credentials (if needed)
-CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "https://asluxuryoriginals.com",
-    "https://www.asluxuryoriginals.com"
-]
-
-
-CORS_ALLOW_METHODS = ["GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
-CORS_ALLOW_HEADERS = [
-    'content-type',
-    'authorization',
-    'X-Requested-With',
-    'accept',
-    'origin',
-    'user-agent',
-    'cookie'
-]
-
+CORS_ALLOW_ALL_ORIGINS = True
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_REQUIRED = True

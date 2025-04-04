@@ -11,6 +11,9 @@ import sys
 import pymysql
 pymysql.install_as_MySQLdb()
 import os
+import sys
+import pymysql
+pymysql.install_as_MySQLdb()
 
 from django.core.wsgi import get_wsgi_application
 

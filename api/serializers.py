@@ -23,15 +23,15 @@ class GetProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'inventory',
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'size', 'price', 'undiscounted_price', 'inventory',
                   'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
         read_only_fields = ['id']
 
     def get_category(self, obj):
         if obj.category:
             return {
-                "name": obj.category.title,
-                "id": obj.category.id
+                "id": obj.category.id,
+                "name": obj.category.title
             }
         return None
 
@@ -62,7 +62,7 @@ class ProductSerializerView(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'discount', 'colour', 'price', 'inventory',
+        fields = ['id', 'name', 'description', 'discount', 'colour', 'price', 'inventory','undiscounted_price',
                   'top_deal', 'image1', 'image2', 'image3', 'category', 'subcategory']
         read_only_fields = ['id']
 
@@ -72,7 +72,7 @@ class SimpleProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'category', 'slug']
+        fields = ['id', 'name', 'price', 'undiscounted_price','category', 'slug']
         read_only_fields = ['id']
 
 
