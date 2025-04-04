@@ -567,7 +567,7 @@ class UserSignupViewSet(viewsets.ViewSet):
 
         send_mail(
             subject='Signup successful',
-            message=f'You have finished the signup verification for ASLuxeryOriginals.com. Welcome!',
+            message=f'You have finished the signup verification for asluxuryoriginals.com !',
             recipient_list=[email],
             from_email=settings.EMAIL_HOST_USER,
         )
@@ -645,7 +645,7 @@ class UserLoginViewSet(viewsets.ViewSet):
         # Send login success email
         send_mail(
             subject='Login Successful',
-            message=f'Your login to ASLuxeryOriginals.com was successful.',
+            message=f'Your login to asluxuryoriginals.com was successful.',
             recipient_list=[email],
             from_email=settings.EMAIL_HOST_USER,
         )

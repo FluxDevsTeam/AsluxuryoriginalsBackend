@@ -54,7 +54,6 @@ def initiate_payment(amount, email, user, redirect_url):
         "redirect_url": redirect_url,
         "meta": {
             "consumer_id": user.id,
-            "consumer_mac": "92a3-912ba-1192a"
         },
         "customer": {
             "email": email,
@@ -62,7 +61,7 @@ def initiate_payment(amount, email, user, redirect_url):
             "name": f"{last_name} {first_name}"
         },
         "customizations": {
-            "title": "AXLuxeryOriginals",
+            "title": "ASLUXURY ORIGINALS",
             "logo": "https://th.bing.com/th/id/OIP.YUyvxZV46V46TKoPLtcyjwHaIj?w=183&h=211&c=7&r=0&o=5&pid=1.7"
         }
     }
@@ -120,6 +119,7 @@ class ApiCart(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'])
     def pay(self, request, pk=None):
         cart = self.get_object()
+        print(cart)
         cart_items = CartItems.objects.filter(cart=cart)
         amount = cart.get_total_price()
         email = request.user.email
@@ -127,6 +127,7 @@ class ApiCart(viewsets.ModelViewSet):
         cart_id = str(cart.id)
 
         for cart_item in cart_items:
+            print("item")
             product = cart_item.product
             if product.inventory < cart_item.quantity:
                 return Response(
@@ -140,9 +141,10 @@ class ApiCart(viewsets.ModelViewSet):
         confirm_token = generate_confirm_token(user, cart_id)
 
         redirect_url = (
-            f"https://asluxeryoriginals.pythonanywhere.com/api/carts/confirm_payment/"
+            f"https://api.asluxuryoriginals.com/api/carts/confirm_payment/"
             f"?c_id={cart_id}&token={confirm_token}"
         )
+        
         return initiate_payment(amount, email, user, redirect_url)
 
     @action(detail=False, methods=["GET"], permission_classes=[AllowAny])
@@ -160,7 +162,7 @@ class ApiCart(viewsets.ModelViewSet):
             return JsonResponse({"detail": "Invalid or expired confirmation token."}, status=401)
 
         if status_from_gateway != "successful":
-            return redirect(f"https://asloriginals.netlify.app/checkout/")
+            return redirect(f"https://asluxuryoriginals.com/checkout/")
 
         with transaction.atomic():
             cart = get_object_or_404(Cart, id=cart_id, owner=user)
@@ -213,7 +215,7 @@ class ApiCart(viewsets.ModelViewSet):
                 subject='New Order',
                 message=f'User {user.email} made an order of total amount of ₦{amount}, '
                         f'order ID is {order.id}. Link to order: '
-                        f'https://asloriginals.netlify.app/orders/',
+                        f'https://asluxuryoriginals.com/orders/',
                 recipient_list=[settings.EMAIL_HOST_USER],
             )
             email_thread.start()
@@ -221,7 +223,7 @@ class ApiCart(viewsets.ModelViewSet):
             cart_items.delete()
             cart.delete()
 
-            return redirect(f"https://asloriginals.netlify.app/orders/")
+            return redirect(f"https://asluxuryoriginals.com/orders/")
 
     def get_queryset(self):
         return Cart.objects.filter(owner=self.request.user).select_related('owner').prefetch_related('items')

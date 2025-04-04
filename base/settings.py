@@ -27,7 +27,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG")
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["api.asluxuryoriginals.com", "www.api.asluxuryoriginals.com"]
 
 # Application definition
 SITE_ID = 1
@@ -92,25 +92,24 @@ WSGI_APPLICATION = 'base.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-# used mysql.connector.django because thats what cpanel shared hosting accepts
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'mysql.connector.django',
-#         'NAME': os.getenv("NAME"),
-#         'USER': os.getenv("USER"),
-#         'PASSWORD': os.getenv("DB_PASSWORD"),
-#         'HOST': os.getenv("HOST"),
-#         'PORT': os.getenv("PORT"),
-#         'OPTIONS': {'raise_on_warnings': False,},
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+
+# used mysql.connector.django because thats what cpanel shared hosting accepts
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv("NAME"),
+        'USER': os.getenv("USER"),
+        'PASSWORD': os.getenv("DB_PASSWORD"),
+        'HOST': os.getenv("HOST"),
+        'PORT': os.getenv("PORT", "3306"),
+    }
+}
 
 
 # Password validation
@@ -208,7 +207,28 @@ EMAIL_HOST_USER = os.getenv("EMAIL")
 EMAIL_HOST_PASSWORD = os.getenv("PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL")
 
-CORS_ALLOW_ALL_ORIGINS = True
+
+# # Optional: Allow credentials (if needed)
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://asluxuryoriginals.com",
+    "https://www.asluxuryoriginals.com"
+]
+
+
+CORS_ALLOW_METHODS = ["GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'X-Requested-With',
+    'accept',
+    'origin',
+    'user-agent',
+    'cookie'
+]
+
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_REQUIRED = True
