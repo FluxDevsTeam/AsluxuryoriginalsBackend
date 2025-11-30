@@ -10,3 +10,6 @@ staticfiles/
 static/
 img/
 __pycache__/
+**/__pycache__/
+
+**.cpython**

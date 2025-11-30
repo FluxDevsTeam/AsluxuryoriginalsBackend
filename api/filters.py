@@ -1,4 +1,4 @@
-from django_filters import DateFilter, UUIDFilter
+from django_filters import DateFilter, NumberFilter
 from django_filters.rest_framework import FilterSet, CharFilter, NumberFilter, BooleanFilter
 from ecommerce.models import Product, Order
 
@@ -23,7 +23,7 @@ class OrderFilter(FilterSet):
     year = NumberFilter(field_name='placed_at', lookup_expr='year')
     start_date = DateFilter(field_name='placed_at', lookup_expr='gte')
     end_date = DateFilter(field_name='placed_at', lookup_expr='lte')
-    id = UUIDFilter(field_name='id')
+    id = NumberFilter(field_name='id')
     class Meta:
         model = Order
         fields = ['id', 'month', 'year', 'start_date', 'end_date']

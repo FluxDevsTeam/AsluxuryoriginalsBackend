@@ -110,7 +110,7 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class AddCartItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.UUIDField()
+    product_id = serializers.IntegerField()
 
     def validate_product_id(self, value):
         if not Product.objects.filter(pk=value).exists():
