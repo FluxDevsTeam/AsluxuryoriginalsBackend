@@ -20,7 +20,7 @@ from ecommerce.models import Product, Category, Cart, Order, CartItems, OrderIte
 from .filters import ProductFilter, OrderFilter
 from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, \
     AddCartItemSerializer, UpdateCartItemSerializer, OrderSerializer, SimpleProductSerializer, \
-    SubCategorySerializer, GetProductSerializer, DashboardOrderSerializer
+    SubCategorySerializer, GetSubCategorySerializer, GetProductSerializer, DashboardOrderSerializer
 from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.timezone import now
@@ -109,6 +109,7 @@ class ApiProducts(viewsets.ModelViewSet):
         return Product.objects.filter(
             inventory__gte=1
         ).order_by('-top_deal', 'id')
+
 
 
 class ApiCart(viewsets.ModelViewSet):
@@ -260,10 +261,16 @@ class ApiCategory(viewsets.ModelViewSet):
 
 class ApiSubCategory(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly, ]
-    serializer_class = SubCategorySerializer
     queryset = SubCategory.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['title']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return GetSubCategorySerializer
+        elif self.action == 'retrieve':
+            return GetSubCategorySerializer
+        return SubCategorySerializer
 
 
 class ApiOrder(viewsets.ModelViewSet):

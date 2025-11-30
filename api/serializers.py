@@ -2,20 +2,37 @@ from rest_framework import serializers
 from ecommerce.models import *
 
 
+
+
+
 class SubCategorySerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+
     class Meta:
         model = SubCategory
-        fields = ['category', 'title']
-        extra_kwargs = {
-            'category': {'write_only': True},
-        }
+        fields = ['id', 'category', 'title']
+        read_only_fields = ['id']
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['title']
+        fields = ['id', 'title']
+        read_only_fields = ['id']
 
+class GetSubCategorySerializer(serializers.ModelSerializer):
+    category = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SubCategory
+        fields = ['id', 'category', 'title']
+        read_only_fields = ['id']
+
+    def get_category(self, obj):
+        return {
+            "id": obj.category.id,
+            "name": obj.category.title
+        }
 
 class GetProductSerializer(serializers.ModelSerializer):
     category = serializers.SerializerMethodField(required=False)
