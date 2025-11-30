@@ -1,5 +1,6 @@
 from django.db import models
 from autoslug import AutoSlugField
+import uuid
 from django.conf import settings
 from django.utils.timezone import now
 
@@ -43,6 +44,7 @@ class SubCategory(models.Model):
 
 
 class Product(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
     material = models.CharField(max_length=1000, blank=True, null=True)
@@ -65,6 +67,7 @@ class Product(models.Model):
 
 
 class Cart(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     address = models.CharField(max_length=200)
     city = models.CharField(max_length=200)
     state = models.CharField(max_length=200)
@@ -89,6 +92,7 @@ class Cart(models.Model):
 
 
 class CartItems(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     size = models.CharField(max_length=200)
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items')
@@ -103,6 +107,7 @@ class CartItems(models.Model):
 
 
 class Order(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     placed_at = models.DateTimeField(auto_now_add=True)
     transaction_id = models.CharField(max_length=200)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="order_history")
@@ -132,6 +137,7 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     size = models.CharField(max_length=200)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
