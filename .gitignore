@@ -10,6 +10,10 @@ staticfiles/
 static/
 img/
 __pycache__/
-**/__pycache__/
 
-**.cpython**
+stderr.log
+stdout.log
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
