@@ -26,9 +26,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG")
+DEBUG = os.getenv("DEBUG") == "True"
 
-ALLOWED_HOSTS = ["api.asluxuryoriginals.com", "www.api.asluxuryoriginals.com", "127.0.0.1"]
+ALLOWED_HOSTS = ["api.asluxuryoriginals.com", "www.api.asluxuryoriginals.com", "127.0.0.1", "localhost"]
 
 # Application definition
 SITE_ID = 1
@@ -118,7 +118,17 @@ DATABASES = {
         'PORT': os.getenv("PORT", "3306"),
     }
 }
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.asluxuryoriginals.com",
+    "https://www.api.asluxuryoriginals.com",
+    "http://api.asluxuryoriginals.com",
+    "http://www.api.asluxuryoriginals.com",
+]
 
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
