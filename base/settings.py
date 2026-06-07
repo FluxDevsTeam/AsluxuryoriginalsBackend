@@ -215,7 +215,19 @@ EMAIL_HOST_USER = os.getenv("EMAIL")
 EMAIL_HOST_PASSWORD = os.getenv("PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL")
 
-CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = [
+    "https://asluxuryoriginals.com",
+    "https://www.asluxuryoriginals.com",
+    "https://api.asluxuryoriginals.com",
+    "https://www.api.asluxuryoriginals.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_REQUIRED = True
