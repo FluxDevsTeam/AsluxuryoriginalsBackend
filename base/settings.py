@@ -216,6 +216,10 @@ EMAIL_HOST_PASSWORD = os.getenv("PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL")
 
 CSRF_TRUSTED_ORIGINS = [
+    "http://asluxuryoriginals.com",
+    "http://www.asluxuryoriginals.com",
+    "http://api.asluxuryoriginals.com",
+    "http://www.api.asluxuryoriginals.com",
     "https://asluxuryoriginals.com",
     "https://www.asluxuryoriginals.com",
     "https://api.asluxuryoriginals.com",
@@ -226,6 +230,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
+CSRF_COOKIE_DOMAIN = ".asluxuryoriginals.com"
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
 
