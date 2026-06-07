@@ -118,17 +118,7 @@ DATABASES = {
         'PORT': os.getenv("PORT", "3306"),
     }
 }
-CSRF_TRUSTED_ORIGINS = [
-    "https://api.asluxuryoriginals.com",
-    "https://www.api.asluxuryoriginals.com",
-    "http://api.asluxuryoriginals.com",
-    "http://www.api.asluxuryoriginals.com",
-]
 
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
